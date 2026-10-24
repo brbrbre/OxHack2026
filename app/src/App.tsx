@@ -5,6 +5,7 @@ import { api } from './api/client'
 import { assetTypesError, errorMessage, isAbortError } from './api/errors'
 import type { AssetsResponse, DecideResponse, PlanResponse, PricesResponse, SummaryResponse } from './api/types'
 import { DEFAULT_NOTICE, USE_MOCKS } from './config'
+import { planFromSearch } from './lib/planLink'
 import InvestmentForm from './components/InvestmentForm'
 import type { PlanDraft, PlannerMode } from './components/InvestmentForm'
 import DecisionCard from './components/DecisionCard'
@@ -12,12 +13,15 @@ import PlanResult from './components/PlanResult'
 import ErrorMessage from './components/ErrorMessage'
 import SummaryBlock from './components/SummaryBlock'
 import AskPanel from './components/AskPanel'
+import RemindPanel from './components/RemindPanel'
 
 const PriceChart = lazy(() => import('./components/PriceChart'))
 
-const initialPlan: PlanDraft = {
+const defaultPlan: PlanDraft = {
   simbolo: 'SPY', monto: '1000', plazo_dias: 30, perfil: 'moderado', tipos: ['ETFs', 'US stocks', 'Crypto'],
 }
+
+const initialPlan: PlanDraft = planFromSearch(window.location.search, defaultPlan)
 
 export default function App() {
   const [assets, setAssets] = useState<AssetsResponse | null>(null)
@@ -234,6 +238,7 @@ export default function App() {
                 onRetry={() => void analyze()} isDemo={USE_MOCKS} />}
             <SummaryBlock summary={summary} pending={summaryPending} />
             <AskPanel result={mode === 'asset' ? result : null} plan={mode === 'plan' ? portfolio : null} />
+            {mode === 'asset' && <RemindPanel result={result} />}
             <footer className="notice-bar">
               <Info size={15} aria-hidden="true" />
               <p>{(mode === 'plan' ? portfolio?.aviso : result?.aviso) ?? DEFAULT_NOTICE}</p>

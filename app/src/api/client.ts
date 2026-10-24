@@ -1,8 +1,8 @@
 import { USE_MOCKS } from '../config'
 import { ApiError } from './errors'
 import { fetchJson } from './http'
-import { parseAssets, parseDecision, parsePlan, parsePrices, parseSummary, parseAsk } from './validation'
-import type { AskRequest, DecideRequest, PlanRequest } from './types'
+import { parseAssets, parseDecision, parsePlan, parsePrices, parseSummary, parseAsk, parseHabit } from './validation'
+import type { AskRequest, DecideRequest, PlanRequest, RemindRequest } from './types'
 
 async function request(path: string, init: RequestInit = {}, signal?: AbortSignal): Promise<unknown> {
   if (USE_MOCKS) {
@@ -68,6 +68,22 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }, signal))
+  },
+
+  async remind(body: RemindRequest, signal?: AbortSignal) {
+    return parseHabit(await request('/api/habit/remind', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }, signal))
+  },
+
+  async habitStatus(token: string, signal?: AbortSignal) {
+    return parseHabit(await request('/api/habit/' + encodeURIComponent(token), {}, signal))
+  },
+
+  async habitNow(token: string, signal?: AbortSignal) {
+    return parseHabit(await request('/api/habit/' + encodeURIComponent(token) + '/now', { method: 'POST' }, signal))
   },
 
   async plan(body: PlanRequest, signal?: AbortSignal) {
