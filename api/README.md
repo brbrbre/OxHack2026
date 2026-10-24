@@ -121,3 +121,13 @@ Respuesta (ejemplo real, baseline, 24 oct 2026, recortado):
 - `invertir`, `esperar` y `no_por_ahora` traen todos los activos de los tipos elegidos, cada uno con su razón.
 - Cada activo de `invertir` trae `fuera_del_plan`: `null` si está en la cartera, o el motivo si no entró (se mueve casi igual que otro ya elegido, o la cartera ya tiene 5).
 - Tipo desconocido: 400 con `{"error": "Unknown asset types: ..."}`.
+
+### Resumen, tutor y audio (Gemini y ElevenLabs)
+
+Solo redactan, explican o leen. Nunca deciden ni cambian un número. Las claves van en `.env` (`GEMINI_API_KEY`, `ELEVENLABS_API_KEY`); sin ellas todo sigue funcionando con textos locales.
+
+- `POST /api/summary/decide` (mismo cuerpo que `/api/decide`) y `POST /api/summary/plan` (mismo cuerpo que `/api/plan`) devuelven `{"texto": "...", "fuente": "gemini" | "template"}`. Si Gemini falla, tarda más de 8 s o su texto no trae el monto que calculó la regla, se usa la plantilla.
+- `POST /api/ask` con `{"pregunta": "...", "simbolo": "WALMEX.MX", "contexto": {...}, "historial": [{"pregunta": "...", "respuesta": "..."}]}` devuelve `{"respuesta": "...", "fuente": "gemini" | "local" | "offline"}`. `simbolo`, `contexto` e `historial` son opcionales (máximo 4 turnos, pregunta de hasta 300 caracteres). Sin Gemini contesta con la ficha del activo (`explain/fichas.py`) o con el glosario.
+- `POST /api/listen` con `{"texto": "..."}` devuelve `audio/mpeg`. Solo lee resúmenes que generó este servidor (400 si no); 503 si no hay audio, y la app usa la voz del navegador.
+
+Modelo de Gemini: `GEMINI_MODEL` (por defecto `gemini-flash-latest`). Voz: `ELEVENLABS_VOICE_ID` y `ELEVENLABS_MODEL`.

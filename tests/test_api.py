@@ -64,3 +64,28 @@ def test_baseline_respeta_el_signo():
     assert up["prob_perdida"] < 0.5 < down["prob_perdida"]
     lo, hi = up["intervalo"]
     assert lo < up["rendimiento_esperado"] < hi
+
+
+def test_resumen_sin_clave_usa_plantilla(client):
+    r = client.post("/api/summary/decide", json={"simbolo": "SPY", "monto": 1000, "plazo_dias": 30, "perfil": "moderado"})
+    assert r.status_code == 200
+    assert r.json()["fuente"] == "template" and "$" in r.json()["texto"]
+
+
+def test_listen_solo_lee_resumenes_del_servidor(client, monkeypatch):
+    assert client.post("/api/listen", json={"texto": "any text"}).status_code == 400
+    texto = client.post("/api/summary/decide", json={"simbolo": "SPY", "monto": 1000, "plazo_dias": 30}).json()["texto"]
+    assert client.post("/api/listen", json={"texto": texto}).status_code == 503
+    monkeypatch.setattr(main.voz, "audio", lambda t: b"ID3fake")
+    r = client.post("/api/listen", json={"texto": texto})
+    assert r.status_code == 200 and r.headers["content-type"] == "audio/mpeg" and r.content == b"ID3fake"
+
+
+def test_ask_sin_clave_usa_la_ficha(client):
+    r = client.post("/api/ask", json={"pregunta": "What does this company do?", "simbolo": "AMXB.MX"})
+    assert r.status_code == 200 and r.json()["fuente"] == "local" and "Telcel" in r.json()["respuesta"]
+
+
+def test_ask_valida_simbolo_y_largo(client):
+    assert client.post("/api/ask", json={"pregunta": "Hi there", "simbolo": "NOPE"}).status_code in (400, 404)
+    assert client.post("/api/ask", json={"pregunta": "x" * 301}).status_code in (400, 422)
