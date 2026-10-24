@@ -2,9 +2,9 @@ import type { Decision, RiskProfile } from '../api/types'
 
 // Wire codes stay unchanged; only their presentation labels are translated here.
 export const DECISION_LABELS = {
-  INVERTIR: 'INVEST',
-  ESPERAR: 'WAIT',
-  NO_POR_AHORA: 'NOT NOW',
+  INVERTIR: 'Invest',
+  ESPERAR: 'Wait',
+  NO_POR_AHORA: 'Not now',
 } as const satisfies Record<Decision, string>
 
 export const PROFILE_LABELS = {

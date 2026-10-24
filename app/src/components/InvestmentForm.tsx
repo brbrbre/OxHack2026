@@ -9,7 +9,10 @@ export interface PlanDraft {
   monto: string
   plazo_dias: number
   perfil: RiskProfile
+  tipos: string[]
 }
+
+export type PlannerMode = 'asset' | 'plan'
 
 interface Props {
   assets: AssetsResponse | null
@@ -19,6 +22,9 @@ interface Props {
   pending: boolean
   isDemo: boolean
   unavailable: boolean
+  mode: PlannerMode
+  onModeChange: (mode: PlannerMode) => void
+  typesError: string | null
 }
 
 const profiles = [
@@ -27,15 +33,26 @@ const profiles = [
   { value: 'agresivo', detail: 'Accept more risk', Icon: Zap },
 ] as const
 
-export default function InvestmentForm({ assets, draft, onChange, onSubmit, pending, isDemo, unavailable }: Props) {
+export default function InvestmentForm({ assets, draft, onChange, onSubmit, pending, isDemo, unavailable,
+  mode, onModeChange, typesError }: Props) {
   const count = assets ? Object.values(assets).flat().length : 0
   return (
-    <section className="panel planner-panel" aria-labelledby="plan-heading">
-      <div className="section-eyebrow"><span className="step-number">01</span> YOUR PLAN</div>
-      <h2 id="plan-heading">Start with the essentials.</h2>
-      <p className="section-description">A few details. A clearer perspective.</p>
-      <form onSubmit={onSubmit}>
-        <div className="field">
+    <section className="planner-panel" aria-labelledby="plan-heading">
+      <h2 id="plan-heading">Your plan</h2>
+      <fieldset className="mode-selector">
+        <legend>How would you like to start?</legend>
+        <div className="planner-mode-options">
+          {([['asset', 'I have an asset in mind'], ['plan', 'Help me choose']] as const).map(([value, label]) => (
+            <label className={'planner-mode-option' + (mode === value ? ' selected' : '')} key={value}>
+              <input type="radio" name="planner-mode" value={value} checked={mode === value}
+                onChange={() => onModeChange(value)} aria-controls="investment-form" />
+              <span>{label}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <form id="investment-form" onSubmit={onSubmit}>
+        {mode === 'asset' && <div className="field">
           <label htmlFor="asset">What are you exploring?</label>
           <div className="select-wrap">
             <select id="asset" name="asset" value={draft.simbolo} disabled={!assets}
@@ -44,7 +61,7 @@ export default function InvestmentForm({ assets, draft, onChange, onSubmit, pend
               {assets && Object.entries(assets).map(([group, items]) => (
                 <optgroup key={group} label={group}>
                   {items.map((asset) => (
-                    <option key={asset.simbolo} value={asset.simbolo}>{asset.simbolo} · {asset.nombre}</option>
+                    <option key={asset.simbolo} value={asset.simbolo}>{asset.nombre} ({asset.simbolo})</option>
                   ))}
                 </optgroup>
               ))}
@@ -53,19 +70,19 @@ export default function InvestmentForm({ assets, draft, onChange, onSubmit, pend
           </div>
           <span className="field-hint">{count ? count + ' assets, from ETFs to crypto'
             : unavailable ? 'Use Try again above to reload your options' : 'Getting your options ready'}</span>
-        </div>
+        </div>}
 
         <div className="field">
           <label htmlFor="amount">How much would you invest?</label>
           <div className="amount-control">
             <span aria-hidden="true">$</span>
-            <input id="amount" name="amount" type="number" inputMode="decimal" min="0.01"
+            <input id="amount" name="amount" type="number" inputMode="decimal" min="0.01" max="1000000000"
               step="0.01" required value={draft.monto}
               onChange={(event) => onChange({ ...draft, monto: event.target.value })}
               aria-describedby="amount-hint" />
             <span className="currency-label">USD</span>
           </div>
-          <span className="field-hint" id="amount-hint">An amount you feel comfortable exploring</span>
+          <span className="field-hint" id="amount-hint">Your total budget in US dollars</span>
         </div>
 
         <fieldset className="field">
@@ -96,13 +113,32 @@ export default function InvestmentForm({ assets, draft, onChange, onSubmit, pend
             ))}
           </div>
         </fieldset>
+        {mode === 'plan' && <fieldset className="field asset-types" id="asset-types" tabIndex={-1}
+          aria-describedby={'asset-types-hint' + (typesError ? ' asset-types-error' : '')}
+          aria-invalid={Boolean(typesError)} disabled={!assets}>
+          <legend>What types of assets interest you?</legend>
+          <div className="asset-type-options">
+            {assets && Object.keys(assets).map((group, index) => (
+              <label className="asset-type-option" key={group}>
+                <input type="checkbox" name="asset-types" id={'asset-type-' + index} value={group}
+                  checked={draft.tipos.includes(group)} aria-invalid={Boolean(typesError)}
+                  onChange={(event) => onChange({ ...draft, tipos: event.target.checked
+                    ? [...draft.tipos, group] : draft.tipos.filter((type) => type !== group) })} />
+                <span>{group}</span>
+              </label>
+            ))}
+          </div>
+          <p className="field-hint" id="asset-types-hint">Choose one or more asset types.
+            {!assets && (unavailable ? ' Use Try again above to reload your options.' : ' Loading asset types…')}</p>
+          {typesError && <p className="field-error" id="asset-types-error" role="alert">{typesError}</p>}
+        </fieldset>}
         <button className="primary-button" type="submit" disabled={!assets || pending}>
-          {pending ? <><LoaderCircle size={18} className="spin" aria-hidden="true" /> Exploring your outlook…</>
-            : <>Explore my outlook <ArrowRight size={18} aria-hidden="true" /></>}
+          {pending ? <><LoaderCircle size={18} aria-hidden="true" />Checking…</>
+            : <>{mode === 'plan' ? 'Build my plan' : 'Get my answer'} <ArrowRight size={18} aria-hidden="true" /></>}
         </button>
-        <p className="form-footnote"><ShieldCheck size={14} aria-hidden="true" /> Explore an idea. No account or payment needed.</p>
+        <p className="form-footnote">No account or payment required.</p>
       </form>
-      {isDemo && (
+      {isDemo && mode === 'asset' && (
         <div className="demo-scenarios"><CircleHelp size={15} aria-hidden="true" />
           <p>Try the demo: <strong>SPY</strong> to {DECISION_LABELS.INVERTIR.toLowerCase()}, <strong>BTCUSDT</strong> to {DECISION_LABELS.ESPERAR.toLowerCase()} (event), <strong>ETHUSDT</strong> to {DECISION_LABELS.ESPERAR.toLowerCase()} (risk), or <strong>NVDA</strong> for {DECISION_LABELS.NO_POR_AHORA.toLowerCase()}.</p>
         </div>

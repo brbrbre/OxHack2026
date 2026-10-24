@@ -1,13 +1,13 @@
-import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, Clock3, Compass, Info, Lightbulb, LoaderCircle, ShieldAlert } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, CalendarClock, Info, Lightbulb, LoaderCircle } from 'lucide-react'
 import type { DecideResponse } from '../api/types'
 import { money, percentage } from '../lib/format'
 import { DECISION_LABELS, PROFILE_LABELS } from '../lib/labels'
 import ErrorMessage from './ErrorMessage'
 
 const appearances = {
-  INVERTIR: { className: 'invest', Icon: ArrowUpRight, subtitle: 'Your outlook suggests an opportunity.' },
-  ESPERAR: { className: 'wait', Icon: Clock3, subtitle: 'A little patience could bring more clarity.' },
-  NO_POR_AHORA: { className: 'not-now', Icon: ShieldAlert, subtitle: 'It may be worth exploring another approach.' },
+  INVERTIR: { className: 'invest' },
+  ESPERAR: { className: 'wait' },
+  NO_POR_AHORA: { className: 'not-now' },
 } as const
 
 interface Props {
@@ -18,48 +18,52 @@ interface Props {
   isDemo: boolean
 }
 
-export default function DecisionCard({ result, pending, error, onRetry, isDemo }: Props) {
+export default function DecisionCard({ result, pending, error, onRetry }: Props) {
   const appearance = result ? appearances[result.decision] : null
+  const numbers = result?.numeros
+  const headline = numbers
+    ? numbers.fraccion === 0 ? 'Keep your ' + money(numbers.monto) + ' for now'
+      : numbers.fraccion === 1 ? 'Invest the full ' + money(numbers.monto_sugerido) + ' now'
+      : 'Invest ' + money(numbers.monto_sugerido) + ' now'
+    : ''
   return (
-    <section className={'panel outlook-panel ' + (appearance?.className ?? '')}
+    <section className="panel outlook-panel"
       aria-labelledby="outlook-heading" aria-busy={pending}>
-      <div className="panel-heading">
-        <div className="section-eyebrow"><span className="step-number">02</span> YOUR OUTLOOK</div>
-        {result && <span className="model-badge">{isDemo ? 'Sample' : 'Model'} · {result.modelo}</span>}
-      </div>
+      {result && <div className="panel-heading">
+        <span className="model-badge">{result.modelo === 'baseline'
+          ? 'Prediction: baseline (3-year historical average)' : 'Prediction: ' + result.modelo}</span>
+      </div>}
       <div aria-live="polite" aria-atomic="true">
         {pending ? (
           <div className="outlook-placeholder loading-outlook" role="status">
-            <div className="placeholder-icon"><LoaderCircle size={29} className="spin" aria-hidden="true" /></div>
-            <h2 id="outlook-heading">Putting things in perspective.</h2>
-            <p>Bringing your plan and its potential risks together.</p>
-            <div className="loading-bars" aria-hidden="true"><span /><span /><span /></div>
+            <LoaderCircle size={24} aria-hidden="true" />
+            <h2 id="outlook-heading" tabIndex={-1}>Checking…</h2>
+            <p>Estimating the amount and risk for your plan.</p>
           </div>
         ) : error ? (
           <div className="outlook-placeholder error-outlook">
-            <h2 id="outlook-heading">We could not build your outlook.</h2>
+            <h2 id="outlook-heading" tabIndex={-1}>We couldn't get your answer.</h2>
             <ErrorMessage message={error} onRetry={onRetry} />
           </div>
-        ) : result && appearance ? (
+        ) : result && numbers && appearance ? (
           <>
             <div className="decision-heading">
-              <div className="decision-symbol"><appearance.Icon size={29} strokeWidth={1.7} aria-hidden="true" /></div>
-              <div><h2 id="outlook-heading" className="decision-title">{DECISION_LABELS[result.decision]}</h2>
-                <p className="decision-subtitle">{appearance.subtitle}</p>
-              </div>
+              <h2 id="outlook-heading" className="suggested-amount" tabIndex={-1}>{headline}</h2>
+              <span className={'decision-badge ' + appearance.className}>{DECISION_LABELS[result.decision]}</span>
             </div>
-            <div className="plan-summary">
-              <strong>{result.simbolo}</strong><span className="summary-divider" />
-              <span>{money(result.numeros.monto)}</span><span className="summary-divider" />
-              <span>{result.numeros.plazo_dias} days</span><span className="summary-divider" />
-              <span>{PROFILE_LABELS[result.numeros.perfil]}</span>
-            </div>
+            {numbers.fraccion > 0 && numbers.fraccion < 1 && <p className="allocation-breakdown">
+              <span>of your {money(numbers.monto)}</span>
+              <span>keep {money(numbers.monto - numbers.monto_sugerido)} for later</span>
+            </p>}
+            <dl className="plan-summary">
+              <div><dt>Asset</dt><dd>{result.simbolo}</dd></div>
+              <div><dt>Budget</dt><dd>{money(result.numeros.monto)}</dd></div>
+              <div><dt>Horizon</dt><dd>{result.numeros.plazo_dias} days</dd></div>
+              <div><dt>Risk profile</dt><dd>{PROFILE_LABELS[result.numeros.perfil]}</dd></div>
+            </dl>
             <div className="reasons">
               <h3>Here is the thinking</h3>
-              <ul>{result.razones.map((reason, index) => <li key={index}>
-                <span className="reason-check"><Check size={12} strokeWidth={2.5} aria-hidden="true" /></span>
-                <span>{reason}</span>
-              </li>)}</ul>
+              <ul>{result.razones.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
             </div>
             {result.recomendaciones.length > 0 && (
               <div className="recommendations">
@@ -77,13 +81,13 @@ export default function DecisionCard({ result, pending, error, onRetry, isDemo }
                 <div className="range-value upside"><span><ArrowUpRight size={14} aria-hidden="true" /> Best case estimate</span>
                   <strong>{money(result.numeros.mejor_caso, true)}</strong></div>
               </div>
-              <div className="range-track" aria-hidden="true"><span /></div>
-              <p>Estimated change on {money(result.numeros.monto)} over {result.numeros.plazo_dias} days.</p>
+              <p>Estimated range on your full {money(result.numeros.monto)} over {result.numeros.plazo_dias} days.</p>
             </div>
             <div className="outlook-metrics">
               <div><span>Expected return</span><strong>{percentage(result.numeros.rendimiento_esperado, true)}</strong></div>
               <div><span>Chance of loss</span><strong>{percentage(result.numeros.prob_perdida)}</strong></div>
-              <div><span>Volatility</span><strong>{percentage(result.numeros.volatilidad)}</strong></div>
+              <div className="typical-move"><span>Typical move in {result.numeros.plazo_dias} days:</span>
+                <strong>±{percentage(result.numeros.volatilidad)}</strong></div>
             </div>
             {result.numeros.eventos.length > 0 && (
               <div className="events-list"><CalendarClock size={16} aria-hidden="true" />
@@ -94,12 +98,8 @@ export default function DecisionCard({ result, pending, error, onRetry, isDemo }
           </>
         ) : (
           <div className="outlook-placeholder">
-            <div className="placeholder-icon"><Compass size={32} strokeWidth={1.3} aria-hidden="true" /></div>
-            <span className="placeholder-eyebrow">A LITTLE CONTEXT GOES A LONG WAY</span>
-            <h2 id="outlook-heading">An informed next move<br />starts with your plan.</h2>
-            <p>Choose an asset, set your horizon, and explore<br className="desktop-break" /> the potential upside and the risks alongside it.</p>
-            <div className="placeholder-chips"><span><Check size={12} aria-hidden="true" /> Clear reasoning</span>
-              <span><Check size={12} aria-hidden="true" /> Risk in perspective</span></div>
+            <h2 id="outlook-heading" tabIndex={-1}>Choose an asset to get started.</h2>
+            <p>You'll see how much to invest now, and why.</p>
           </div>
         )}
       </div>

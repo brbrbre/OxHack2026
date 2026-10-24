@@ -43,18 +43,38 @@ The seven catalogue groups contain 21 assets, including VOD.L (Vodafone), HSBA.L
 
 | Asset | Sample decision |
 | --- | --- |
-| SPY | INVERTIR / INVEST |
-| BTCUSDT | ESPERAR / WAIT — upcoming Fed event |
-| ETHUSDT | ESPERAR / WAIT — risk exceeds the example moderate tolerance |
-| NVDA | NO_POR_AHORA / NOT NOW |
+| SPY | INVERTIR / Invest |
+| BTCUSDT | ESPERAR / Wait — upcoming Fed event |
+| ETHUSDT | ESPERAR / Wait — risk exceeds the example moderate tolerance |
+| NVDA | NO_POR_AHORA / Not now |
 
 Other sample assets reuse the illustrative INVEST response. Mocks echo the submitted amount, horizon and risk profile; monetary examples scale with the amount. The ETHUSDT risk example uses a loss of $220 (-22.0%) on $1,000 and the supplied 10% moderate tolerance; it suggests $455 instead. For other profiles it asks the user to review the risk without inventing a tolerance. These fixtures are not a financial model. Sample histories are deterministic, ending on 24 October 2026 (or the preceding weekday for non-crypto assets).
 
 Decision numbers include fraccion (0 to 1), monto_sugerido (the submitted amount times that fraction), and tendencia_12m (a historical return or null when unavailable). The examples cover full investment, partial investment, no investment, positive and negative trends, a zero trend, and missing history. Monetary worst/best cases still refer to the full submitted amount, not the suggested amount.
 
-POST /api/plan accepts monto, plazo_dias, perfil and tipos (one or more exact group names from /api/assets). Its typed client and mock are ready; the Help me choose interface belongs to the later UI block and is not shown yet. src/mocks/plan.ts exports a sample for $5,000, 90 days, moderate risk, ETFs + US stocks + Crypto, plus an all-cash fixture. Generated examples preserve the requested amount, horizon, profile and groups. Every selected asset appears once in invertir, esperar or no_por_ahora, with its reason; the sample portfolio contains up to five of the investable assets, each at most 40% of the budget, and the remainder stays in efectivo. Holding amounts and cash add up to the original budget. These examples illustrate the response contract only; the frontend does not reproduce the Python portfolio algorithm. Unknown group names return HTTP 400 with the API's Unknown asset types: ... text.
+POST /api/plan accepts monto, plazo_dias, perfil and tipos (one or more exact group names from /api/assets). src/mocks/plan.ts exports a sample for $5,000, 90 days, moderate risk, ETFs + US stocks + Crypto, plus an all-cash fixture. Generated examples preserve the requested amount, horizon, profile and groups. Every selected asset appears once in invertir, esperar or no_por_ahora, with its reason; the sample portfolio contains up to five of the investable assets, each at most 40% of the budget, and the remainder stays in efectivo. Holding amounts and cash add up to the original budget. These examples illustrate the response contract only; the frontend does not reproduce the Python portfolio algorithm. Unknown group names return HTTP 400 with the API's Unknown asset types: ... text.
 
-The API does not include monetary or quote-currency metadata. The form and decision amounts currently use dollars to match the supplied contract; the chart labels its values as the asset's quote currency rather than assuming every price is in dollars.
+## Help me choose
+
+The mode selector above the form offers I have an asset in mind and Help me choose. The second mode keeps the same amount, horizon and risk inputs and adds checkboxes sourced from the catalogue's group keys. It submits only monto, plazo_dias, perfil and tipos to /api/plan through the same VITE_USE_MOCKS switch. Asset-type errors appear beside the checkbox group. Other service errors appear in the result with a retry button. Switching modes or editing any input cancels pending analysis and clears stale results.
+
+The portfolio result shows the API's invested amount, holdings and cash in a proportional bar, a legend and a table. Weights refer to the full budget, including cash; the frontend does not allocate or rebalance investments. It displays the risk against the full amount, the three decision lists with their reasons, and the API summary verbatim. An all-cash plan is a valid result. Tiny floating point cash residues are displayed as zero without changing the response. The educational notice stays below the result. The individual price chart and its cone belong to the single-asset mode.
+
+The API does not include monetary or quote-currency metadata. The form and decision amounts use USD to match the supplied contract. The chart maps symbols to quote units: .MX uses MXN, .L arrives in GBp and is displayed in GBP after dividing by 100, USDT pairs use USDT, and =X symbols show an exchange rate with its direction. Other symbols use USD. Visible prices, tooltips and axis labels share the same formatter; source prices are not modified. A negative period change uses a downward arrow.
+
+The educational notice appears below the result in normal document flow. Analysis moves focus to the result heading; the skip link remains available for keyboard navigation. Text is at least 12 px, with body copy at 15–16 px and text contrast of at least 4.5:1 against its background.
+
+## Visual design
+
+The form is an unboxed sidebar, the result is the only elevated surface, and the price chart is flat with a dividing line above it. Headings use direct English copy; result and chart metadata use labelled values. The single IBM Plex Sans family is bundled locally in four weights, so fonts do not require an external request at runtime. All numbers use tabular figures.
+
+The palette lives in the stylesheet's root tokens: paper #F7F8F6, surface #FFFFFF, ink #15202B, secondary ink #4A5662, line #DCE1E5 and accent #2346A0. Decision colors are reserved for their badges. The only animation introduces the suggested amount when a result arrives; prefers-reduced-motion removes it. Loading states use static icons and text. On phones, submitting moves directly to the result without animated scrolling.
+
+## Suggested amount and forecast
+
+The result headline uses the API's monto_sugerido: invest the full budget, invest part now and keep the remainder for later, or keep the whole budget for now. The frontend does not recalculate the allocation. Decision colors are reserved for the decision badge. Reasons and recommendations remain verbatim; the baseline label explains that it uses a 3-year historical average, while other model names are displayed as supplied.
+
+After analysis, the price chart adds a shaded terminal range and a dashed expected-price line. The endpoint is the last closing date plus plazo_dias in calendar days, calculated in UTC; weekends and leap days are counted. The chart uses a numeric time axis so the forecast occupies its actual duration. The terminal values use the original API price and full requested budget: low = last × (1 + peor_caso / monto), high = last × (1 + mejor_caso / monto), expected = last × (1 + rendimiento_esperado). Currency conversion is only for display. The band connects the last close to those terminal estimates; it does not claim daily model predictions. Changing the plan removes the old analysis and cone.
 
 ## Checks
 
