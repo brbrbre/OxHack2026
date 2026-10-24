@@ -1,6 +1,9 @@
-# Núcleo (modelo a mano: solo NumPy y pandas)
+# Núcleo
 numpy
 pandas
+# Modelo del equipo (en Mac sin Homebrew: sh scripts/mac_xgboost_openmp.sh)
+xgboost
+scikit-learn
 # Datos
 yfinance
 requests
