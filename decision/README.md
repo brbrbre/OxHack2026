@@ -74,6 +74,31 @@ Lo que dicen los números:
 - **El freno de tendencia no mejoró el entrenamiento** en ningún perfil. Queda apagado.
 - **Este es el marcador del modelo de Felipe y Brisma:** un buen modelo hace útil el filtro de expectativa. Se mide con `--modelo model`.
 
+## Evaluación de pronósticos (`evaluate_forecasts.py`)
+
+Mide si las predicciones dicen la verdad, aparte de si se ganó dinero. Sirve para el baseline y para el modelo del equipo.
+
+```bash
+python -m decision.evaluate_forecasts --desde 2022-01-01                 # baseline
+python -m decision.evaluate_forecasts --desde 2022-01-01 --modelo model  # modelo del equipo
+```
+
+Resultado del 24 oct 2026, **baseline**, 1,102 ventanas de 30 días (19 activos, 2022-hoy):
+
+| Qué se mide | Meta | Baseline |
+|---|---|---|
+| Precio real dentro del intervalo del 90 % | 90 % | **92 %** |
+| Precio real abajo del extremo bajo | 5 % | **4 %** |
+| Brier de la probabilidad de pérdida (menor es mejor) | menor que el ingenuo (0.246) | 0.252 |
+| Skill contra el ingenuo | > 0 | -2.4 % |
+| IC de rango, esperado contra real | > 0 | -0.06 |
+
+Lo que dicen los números:
+- **El intervalo está bien calibrado.** De su extremo bajo depende cuánto invierte la app, y por eso el tamaño por riesgo funciona.
+- **Las colas gordas se notan en cripto y NVDA:** el precio cae abajo del extremo bajo 9-10 % de las veces, no 5 %.
+- **La dirección no se predice.** La probabilidad de pérdida es un poco peor que la frecuencia histórica, y el orden de los rendimientos esperados va ligeramente al revés (IC por activo de -0.1 a -0.36). El promedio de 3 años mezcla la continuidad de 1-12 meses con la reversión de 13-36 meses.
+- **Meta para el modelo del equipo:** skill > 0 e IC > 0, sin perder la cobertura del intervalo.
+
 Valores por defecto en `rules.py`: los que eligió el entrenamiento para el perfil por defecto (moderado). Se probaron 6 configuraciones; no hubo otras pruebas.
 
 Limitaciones:
