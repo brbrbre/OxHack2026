@@ -4,7 +4,7 @@ Protocolo (detalle y fuentes en la investigación del equipo):
 1. Rejilla CHICA y fija antes de ver resultados: 6 configuraciones.
    Con ~6 años de entrenamiento, más pruebas harían que el mejor resultado
    salga bueno por pura suerte (Bailey y López de Prado 2014).
-2. Un solo juego de parámetros para los 19 activos (no uno por activo).
+2. Un solo juego de parámetros para todos los activos (no uno por activo).
 3. Se elige con 2016-2021 (entrenamiento) y se prueba con 2022 en adelante.
 4. Walk-forward: cada enero se vuelve a elegir con todo lo anterior.
 5. Intervalo de confianza por bootstrap de bloques circular (Ledoit y Wolf 2008)
@@ -27,7 +27,7 @@ import sys
 import numpy as np
 import pandas as pd
 
-from decision.backtest import load_predictor, run
+from decision.backtest import _call, load_predictor, run
 
 GRID = [
     {"exigir_expectativa_positiva": e, "freno_tendencia": f}
@@ -41,6 +41,24 @@ INICIO_PRUEBA = "2022-01-01"
 def nombre(cfg: dict) -> str:
     gate = "exige μ>0" if cfg["exigir_expectativa_positiva"] else "sin filtro μ"
     return f"{gate}, freno tendencia x{cfg['freno_tendencia']}"
+
+
+def con_memoria(predict):
+    """Guarda cada predicción para no repetirla en las 6 configuraciones.
+
+    La predicción depende solo de los precios hasta la fecha de corte y del plazo;
+    la configuración cambia la regla, no el modelo. Con XGBoost esto baja la
+    calibración de más de una hora a unos minutos.
+    """
+    guardadas: dict = {}
+
+    def predict_guardado(precios, plazo_dias, es_cripto=False):
+        clave = (precios.name, precios.index[-1], len(precios), float(precios.iloc[-1]), plazo_dias, es_cripto)
+        if clave not in guardadas:
+            guardadas[clave] = _call(predict, precios, plazo_dias, es_cripto)
+        return dict(guardadas[clave])
+
+    return predict_guardado
 
 
 def cartera(simbolos, precios, es_cripto, cfg, predict, plazo, perfil) -> pd.DataFrame:
@@ -129,6 +147,7 @@ def main(argv: list[str]) -> int:
     a = ap.parse_args(argv)
 
     predict, nombre_modelo = load_predictor(a.modelo)
+    predict = con_memoria(predict)
     simbolos = all_symbols()
     precios = {s: get_close(s) for s in simbolos}
     cripto = {s: is_crypto(s) for s in simbolos}
@@ -177,7 +196,7 @@ def main(argv: list[str]) -> int:
     print(f"   Resultado 2019-hoy: Sharpe app {mw['sharpe_app']:.2f} | siempre {mw['sharpe_siempre']:.2f} | "
           f"misma exposición {mw['sharpe_misma_exp']:.2f} | caída máx app {mw['caida_app']:.1%} vs siempre {mw['caida_siempre']:.1%}")
 
-    print("\nLimitaciones: el efectivo rinde 0 %; sin comisiones; los 19 activos se eligieron en 2026 "
+    print(f"\nLimitaciones: el efectivo rinde 0 %; sin comisiones; los {len(simbolos)} activos se eligieron en 2026 "
           "(sesgo de supervivencia); el calendario de la Fed no existe antes de oct 2026.")
     return 0
 
