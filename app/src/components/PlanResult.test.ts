@@ -19,6 +19,19 @@ function render(result: PlanResponse | null, options: { pending?: boolean; error
 }
 
 describe('portfolio plan presentation', () => {
+  it('keeps each asset color attached to its identity when the API changes holding order', () => {
+    const original = render(planFixtures.sample)
+    const reordered = render({ ...planFixtures.sample, cartera: [...planFixtures.sample.cartera].reverse() })
+    function tones(html: string) {
+      return Object.fromEntries(Array.from(html.matchAll(/class="allocation-segment ([^"]+)"[^>]*title="([^"]+)"/g),
+        ([, tone, title]) => [title, tone]))
+    }
+    expect(tones(reordered)).toEqual(tones(original))
+    const assetTones = Object.values(tones(original)).filter((tone) => tone !== 'allocation-cash')
+    expect(new Set(assetTones).size).toBeGreaterThan(1)
+    for (const tone of assetTones) expect(original).toContain('class="allocation-key ' + tone + '"')
+  })
+
   it('leads with the API investment amount and keeps cash in the full-budget allocation', () => {
     const html = render(planFixtures.sample)
     expect(html).toContain('Invest $4,500 across 5 assets')
@@ -51,12 +64,20 @@ describe('portfolio plan presentation', () => {
 
   it('keeps each API candidate in its supplied decision group and preserves its reason', () => {
     const html = render(planFixtures.sample)
-    expect(html).toContain('class="decision-badge invest">Invest')
-    expect(html).toContain('class="decision-badge wait">Wait')
-    expect(html).toContain('class="decision-badge not-now">Not now')
-    for (const asset of [...planFixtures.sample.invertir, ...planFixtures.sample.esperar, ...planFixtures.sample.no_por_ahora]) {
-      expect(html).toContain('class="candidate-symbol">' + asset.simbolo)
-      expect(html).toContain('<p>' + text(asset.razon) + '</p>')
+    for (const { tone, heading, label, assets } of [
+      { tone: 'invest', heading: 'plan-invest-heading', label: 'Invest', assets: planFixtures.sample.invertir },
+      { tone: 'wait', heading: 'plan-wait-heading', label: 'Wait', assets: planFixtures.sample.esperar },
+      { tone: 'not-now', heading: 'plan-not-now-heading', label: 'Not now', assets: planFixtures.sample.no_por_ahora },
+    ]) {
+      const group = html.split('<section class="plan-classification ' + tone + '"')[1].split('</section>')[0]
+      expect(group).toContain('aria-labelledby="' + heading + '"')
+      expect(group).toContain('class="decision-badge ' + tone + '"')
+      expect(group).toContain('aria-hidden="true"')
+      expect(group).toContain('</svg>' + label + '</span>')
+      for (const asset of assets) {
+        expect(group).toContain('class="candidate-symbol">' + asset.simbolo)
+        expect(group).toContain('<p>' + text(asset.razon) + '</p>')
+      }
     }
   })
 
@@ -113,7 +134,7 @@ describe('portfolio plan presentation', () => {
   })
 
   it.each([
-    { result: null, options: {}, title: 'Not sure what to invest in?' },
+    { result: null, options: {}, title: 'Ready to compare another plan?' },
     { result: null, options: { pending: true }, title: 'Checking…' },
     { result: null, options: { error: 'Service unavailable.' }, title: 'We could not build your plan.' },
     { result: planFixtures.sample, options: {}, title: 'Invest $4,500 across 5 assets' },

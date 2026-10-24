@@ -2,6 +2,7 @@ import { ArrowDownRight, ArrowUpRight, CalendarClock, Info, Lightbulb, LoaderCir
 import type { DecideResponse } from '../api/types'
 import { money, percentage } from '../lib/format'
 import { DECISION_LABELS, PROFILE_LABELS } from '../lib/labels'
+import AssetLogo from './AssetLogo'
 import ErrorMessage from './ErrorMessage'
 
 const appearances = {
@@ -56,7 +57,10 @@ export default function DecisionCard({ result, pending, error, onRetry }: Props)
               <span>keep {money(numbers.monto - numbers.monto_sugerido)} for later</span>
             </p>}
             <dl className="plan-summary">
-              <div><dt>Asset</dt><dd>{result.simbolo}</dd></div>
+              <div className="plan-summary-asset"><dt>Asset</dt><dd className="asset-name-row">
+                <AssetLogo symbol={result.simbolo} size="small" />
+                <span className="asset-name-copy"><span>{result.nombre}</span><small>{result.simbolo}</small></span>
+              </dd></div>
               <div><dt>Budget</dt><dd>{money(result.numeros.monto)}</dd></div>
               <div><dt>Horizon</dt><dd>{result.numeros.plazo_dias} days</dd></div>
               <div><dt>Risk profile</dt><dd>{PROFILE_LABELS[result.numeros.perfil]}</dd></div>
@@ -98,8 +102,8 @@ export default function DecisionCard({ result, pending, error, onRetry }: Props)
           </>
         ) : (
           <div className="outlook-placeholder">
-            <h2 id="outlook-heading" tabIndex={-1}>Choose an asset to get started.</h2>
-            <p>You'll see how much to invest now, and why.</p>
+            <h2 id="outlook-heading" tabIndex={-1}>Ready to check your next plan?</h2>
+            <p>Adjust your choices, then select Get my answer to see an updated analysis.</p>
           </div>
         )}
       </div>

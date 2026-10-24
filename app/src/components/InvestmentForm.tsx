@@ -1,8 +1,9 @@
-import { ArrowRight, ChevronDown, CircleHelp, LoaderCircle, ShieldCheck, SlidersHorizontal, Zap } from 'lucide-react'
+import { ArrowRight, CircleHelp, LoaderCircle, ShieldCheck, SlidersHorizontal, Zap } from 'lucide-react'
 import type { FormEvent } from 'react'
 import type { AssetsResponse, RiskProfile } from '../api/types'
 import { HORIZONS } from '../config'
 import { DECISION_LABELS, PROFILE_LABELS } from '../lib/labels'
+import AssetPicker from './AssetPicker'
 
 export interface PlanDraft {
   simbolo: string
@@ -25,6 +26,7 @@ interface Props {
   mode: PlannerMode
   onModeChange: (mode: PlannerMode) => void
   typesError: string | null
+  stage?: 'setup' | 'workspace'
 }
 
 const profiles = [
@@ -34,11 +36,15 @@ const profiles = [
 ] as const
 
 export default function InvestmentForm({ assets, draft, onChange, onSubmit, pending, isDemo, unavailable,
-  mode, onModeChange, typesError }: Props) {
+  mode, onModeChange, typesError, stage = 'workspace' }: Props) {
   const count = assets ? Object.values(assets).flat().length : 0
   return (
-    <section className="planner-panel" aria-labelledby="plan-heading">
-      <h2 id="plan-heading">Your plan</h2>
+    <section className={'planner-panel' + (stage === 'setup' ? ' planner-panel-setup' : '')} aria-labelledby="plan-heading">
+      {stage === 'setup' ? <div className="plan-heading-row"><div>
+        <p className="plan-step">Start here</p>
+        <h1 id="plan-heading">Your plan</h1>
+        <p className="plan-intro">Set your budget, time horizon and comfort with risk. Then see what could work for you.</p>
+      </div></div> : <h2 id="plan-heading" tabIndex={-1}>Your plan</h2>}
       <fieldset className="mode-selector">
         <legend>How would you like to start?</legend>
         <div className="planner-mode-options">
@@ -52,27 +58,15 @@ export default function InvestmentForm({ assets, draft, onChange, onSubmit, pend
         </div>
       </fieldset>
       <form id="investment-form" onSubmit={onSubmit}>
-        {mode === 'asset' && <div className="field">
+        {mode === 'asset' && <div className="field field-asset">
           <label htmlFor="asset">What are you exploring?</label>
-          <div className="select-wrap">
-            <select id="asset" name="asset" value={draft.simbolo} disabled={!assets}
-              onChange={(event) => onChange({ ...draft, simbolo: event.target.value })}>
-              {!assets && <option value="SPY">{unavailable ? 'Assets unavailable' : 'Loading assets…'}</option>}
-              {assets && Object.entries(assets).map(([group, items]) => (
-                <optgroup key={group} label={group}>
-                  {items.map((asset) => (
-                    <option key={asset.simbolo} value={asset.simbolo}>{asset.nombre} ({asset.simbolo})</option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-            <ChevronDown size={16} aria-hidden="true" />
-          </div>
-          <span className="field-hint">{count ? count + ' assets, from ETFs to crypto'
+          <AssetPicker assets={assets} symbol={draft.simbolo} unavailable={unavailable} describedBy="asset-hint"
+            onChange={(simbolo) => onChange({ ...draft, simbolo })} />
+          <span className="field-hint" id="asset-hint">{count ? count + ' assets, from ETFs to crypto'
             : unavailable ? 'Use Try again above to reload your options' : 'Getting your options ready'}</span>
         </div>}
 
-        <div className="field">
+        <div className="field field-amount">
           <label htmlFor="amount">How much would you invest?</label>
           <div className="amount-control">
             <span aria-hidden="true">$</span>
@@ -85,7 +79,7 @@ export default function InvestmentForm({ assets, draft, onChange, onSubmit, pend
           <span className="field-hint" id="amount-hint">Your total budget in US dollars</span>
         </div>
 
-        <fieldset className="field">
+        <fieldset className="field field-horizon">
           <legend>What is your time horizon?</legend>
           <div className="horizon-options">
             {HORIZONS.map((days) => (
@@ -132,11 +126,16 @@ export default function InvestmentForm({ assets, draft, onChange, onSubmit, pend
             {!assets && (unavailable ? ' Use Try again above to reload your options.' : ' Loading asset types…')}</p>
           {typesError && <p className="field-error" id="asset-types-error" role="alert">{typesError}</p>}
         </fieldset>}
-        <button className="primary-button" type="submit" disabled={!assets || pending}>
-          {pending ? <><LoaderCircle size={18} aria-hidden="true" />Checking…</>
-            : <>{mode === 'plan' ? 'Build my plan' : 'Get my answer'} <ArrowRight size={18} aria-hidden="true" /></>}
-        </button>
-        <p className="form-footnote">No account or payment required.</p>
+        <div className="form-actions">
+          <button className="primary-button" type="submit" disabled={!assets || pending}>
+            {pending ? <><LoaderCircle size={18} aria-hidden="true" />Checking…</>
+              : <>{mode === 'plan' ? 'Build my plan' : 'Get my answer'} <ArrowRight size={18} aria-hidden="true" /></>}
+          </button>
+          <p className="form-footnote">No account or payment required.</p>
+          {stage === 'setup' && pending && <p className="setup-progress" role="status">
+            {mode === 'plan' ? 'Comparing your asset types. Your plan will appear here.' : 'Checking your asset. Your answer will appear here.'}
+          </p>}
+        </div>
       </form>
       {isDemo && mode === 'asset' && (
         <div className="demo-scenarios"><CircleHelp size={15} aria-hidden="true" />

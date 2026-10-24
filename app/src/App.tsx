@@ -7,6 +7,10 @@ import type { AssetsResponse, DecideResponse, PlanResponse, PricesResponse } fro
 import { DEFAULT_NOTICE, USE_MOCKS } from './config'
 import InvestmentForm from './components/InvestmentForm'
 import type { PlanDraft, PlannerMode } from './components/InvestmentForm'
+import PlannerEntry from './components/PlannerEntry'
+import type { Experience } from './components/PlannerEntry'
+import GuidedPlanner from './components/GuidedPlanner'
+import type { GuidedStep } from './components/GuidedPlanner'
 import DecisionCard from './components/DecisionCard'
 import PlanResult from './components/PlanResult'
 import ErrorMessage from './components/ErrorMessage'
@@ -32,7 +36,13 @@ export default function App() {
   const [deciding, setDeciding] = useState(false)
   const [decideError, setDecideError] = useState<string | null>(null)
   const [typesError, setTypesError] = useState<string | null>(null)
+  const [hasOpenedResults, setHasOpenedResults] = useState(false)
+  const [experience, setExperience] = useState<Experience | null>(null)
+  const [guidedOpen, setGuidedOpen] = useState(false)
+  const [guidedStep, setGuidedStep] = useState<GuidedStep>(0)
+  const hasChosenExperience = useRef(false)
   const decisionController = useRef<AbortController | null>(null)
+  const showWorkspace = hasOpenedResults && !guidedOpen && experience !== null
 
   useEffect(() => {
     const controller = new AbortController()
@@ -56,7 +66,7 @@ export default function App() {
   }, [assetsAttempt])
 
   useEffect(() => {
-    if (!assets || mode !== 'asset') return
+    if (!assets || mode !== 'asset' || !showWorkspace) return
     const controller = new AbortController()
     setPrices(null)
     setPricesPending(true)
@@ -69,18 +79,22 @@ export default function App() {
       if (!controller.signal.aborted) setPricesPending(false)
     })
     return () => controller.abort()
-  }, [assets, draft.simbolo, pricesAttempt, mode])
+  }, [assets, draft.simbolo, pricesAttempt, mode, showWorkspace])
 
   useEffect(() => () => decisionController.current?.abort(), [])
 
   useEffect(() => {
-    if (!deciding && !result && !portfolio && !decideError) return
+    if (!showWorkspace || (!deciding && !result && !portfolio && !decideError)) return
     const heading = document.getElementById('outlook-heading')
     heading?.focus({ preventScroll: true })
     if (window.matchMedia('(max-width: 760px)').matches) {
-      heading?.closest('section')?.scrollIntoView({ behavior: 'instant', block: 'start' })
+      heading?.closest('.results-column')?.scrollIntoView({ behavior: 'instant', block: 'start' })
     }
-  }, [deciding, result, portfolio, decideError])
+  }, [deciding, result, portfolio, decideError, showWorkspace])
+
+  useEffect(() => {
+    if (!showWorkspace && decideError) document.getElementById('setup-error')?.focus()
+  }, [showWorkspace, decideError])
 
   useEffect(() => {
     if (typesError && mode === 'plan') document.getElementById('asset-types')?.focus()
@@ -106,6 +120,28 @@ export default function App() {
     setMode(next)
   }, [mode, clearAnalysis])
 
+  function chooseExperience(next: Experience | null) {
+    clearAnalysis()
+    if (next && !hasChosenExperience.current) {
+      if (next === 'guided') setMode('plan')
+      hasChosenExperience.current = true
+    }
+    setExperience(next)
+    setGuidedOpen(next === 'guided')
+    if (next === 'guided') setGuidedStep(0)
+  }
+
+  function changeGuidedStep(next: GuidedStep) {
+    clearAnalysis()
+    setGuidedStep(next)
+  }
+
+  useEffect(() => {
+    if (showWorkspace) return
+    const target = experience === null ? 'entry-heading' : guidedOpen ? null : 'planner'
+    if (target) document.getElementById(target)?.focus({ preventScroll: true })
+  }, [experience, guidedOpen, showWorkspace])
+
   async function analyze() {
     if (!assets) return
     const amount = Number(draft.monto)
@@ -129,10 +165,18 @@ export default function App() {
       const request = { monto: amount, plazo_dias: draft.plazo_dias, perfil: draft.perfil }
       if (mode === 'plan') {
         const response = await api.plan({ ...request, tipos: draft.tipos }, controller.signal)
-        if (!controller.signal.aborted) setPortfolio(response)
+        if (!controller.signal.aborted) {
+          setPortfolio(response)
+          setHasOpenedResults(true)
+          setGuidedOpen(false)
+        }
       } else {
         const response = await api.decide({ ...request, simbolo: draft.simbolo }, controller.signal)
-        if (!controller.signal.aborted) setResult(response)
+        if (!controller.signal.aborted) {
+          setResult(response)
+          setHasOpenedResults(true)
+          setGuidedOpen(false)
+        }
       }
     } catch (error) {
       if (!controller.signal.aborted && !isAbortError(error)) {
@@ -167,27 +211,48 @@ export default function App() {
         <span className="event-tag"><span /> Built for OxHack ’26</span>
       </header>
 
-      <main className="page-content" id="top">
-        <section className="page-intro" aria-labelledby="page-title">
+      <main className={'page-content' + (!showWorkspace ? ' page-content-setup' : '')} id="top">
+        {showWorkspace && <section className="page-intro" aria-labelledby="page-title">
           <div>
             <h1 id="page-title">Invest now, wait, or not yet?</h1>
             <p>Pick an asset and how long you'll hold it. We size the investment to the loss you can accept.</p>
           </div>
-        </section>
+        </section>}
 
         {USE_MOCKS && <div className="demo-banner" role="note">
           <div><FlaskConical size={16} aria-hidden="true" /><strong>Demo mode</strong>
             <span>Sample prices and decisions. No live analysis.</span></div>
         </div>}
 
-        {assetsError && <div className="assets-error"><ErrorMessage message={assetsError}
+        {assetsError && experience && <div className="assets-error"><ErrorMessage message={assetsError}
           onRetry={() => setAssetsAttempt((attempt) => attempt + 1)} /></div>}
 
-        <div className="workspace" id="planner" tabIndex={-1}>
-          <InvestmentForm assets={assets} draft={draft} onChange={changePlan}
-            onSubmit={submit} pending={deciding} isDemo={USE_MOCKS} unavailable={Boolean(assetsError)}
-            mode={mode} onModeChange={changeMode} typesError={typesError} />
-          <div className="results-column">
+        <div className={'workspace ' + (showWorkspace ? 'workspace-results' : 'workspace-setup')} id="planner" tabIndex={-1}>
+          {experience === null ? <PlannerEntry onChoose={chooseExperience} />
+            : guidedOpen ? <GuidedPlanner assets={assets} draft={draft} onChange={changePlan}
+              mode={mode} onModeChange={changeMode} onSubmit={submit} pending={deciding}
+              unavailable={Boolean(assetsError)} typesError={typesError} step={guidedStep} onStepChange={changeGuidedStep}
+              onChooseDifferent={() => chooseExperience(null)} onUseQuick={() => chooseExperience('quick')} />
+              : <div className="planner-form-column">
+                <div className="planner-route-bar">
+                  {!showWorkspace && <button type="button" onClick={() => chooseExperience(null)}>Change how I fill this in</button>}
+                  <button type="button" onClick={() => chooseExperience('guided')}>{showWorkspace ? 'Edit step by step' : 'Use guided setup'}</button>
+                </div>
+                <InvestmentForm assets={assets} draft={draft} onChange={changePlan}
+                  onSubmit={submit} pending={deciding} isDemo={USE_MOCKS} unavailable={Boolean(assetsError)}
+                  mode={mode} onModeChange={changeMode} typesError={typesError}
+                  stage={showWorkspace ? 'workspace' : 'setup'} />
+              </div>}
+          {!showWorkspace && <>
+            {decideError && <div className="setup-error" id="setup-error" tabIndex={-1}>
+              <ErrorMessage message={decideError} onRetry={() => void analyze()} />
+            </div>}
+            <footer className="notice-bar setup-notice">
+              <Info size={15} aria-hidden="true" /><p>{DEFAULT_NOTICE}</p>
+            </footer>
+          </>}
+          {showWorkspace && <div className="results-column">
+            <div className="results-toolbar"><a href="#planner">Edit your plan <ArrowDown size={14} aria-hidden="true" /></a></div>
             {mode === 'plan'
               ? <PlanResult result={portfolio} pending={deciding} error={decideError} onRetry={() => void analyze()} />
               : <DecisionCard result={result} pending={deciding} error={decideError}
@@ -202,7 +267,7 @@ export default function App() {
               onRetry={() => assetsError ? setAssetsAttempt((attempt) => attempt + 1) : setPricesAttempt((attempt) => attempt + 1)}
               isDemo={USE_MOCKS} result={result} />
             </Suspense>}
-          </div>
+          </div>}
         </div>
 
         <details className="how-it-works" id="how-it-works">
