@@ -52,25 +52,25 @@ python -m decision.calibrate --perfil moderado     # tarda ~5 s
 
 Protocolo:
 - 6 configuraciones fijas: filtro de expectativa sí/no × freno de tendencia 1, 0.5 o 0.
-- Un solo juego para los 19 activos.
+- Un solo juego para los 21 activos.
 - Se elige con 2016-2021 y se prueba con 2022-hoy, año por año.
 - Walk-forward desde 2019.
 - Bootstrap de bloques y placebo (fracciones barajadas al azar).
 
-Resultado del 24 oct 2026, con el **baseline** (no con el modelo del equipo). Cartera con el mismo peso en los 19 activos, ventanas de 30 días, prueba 2022-hoy:
+Resultado del 24 oct 2026, con el **baseline** (no con el modelo del equipo). Cartera con el mismo peso en los 21 activos, ventanas de 30 días, prueba 2022-hoy:
 
-| Perfil | Config. elegida | Sharpe siempre | Sharpe app | Sharpe misma exp. | Caída máx. siempre | Caída máx. app | Placebo |
-|---|---|---|---|---|---|---|---|
-| conservador | sin filtro, sin freno | 0.89 | **1.06** | 0.89 | -31.9 % | **-10.2 %** | 0 % |
-| moderado | con filtro, sin freno | 0.89 | 0.82 | 0.89 | -31.9 % | -15.9 % | 94 % |
-| agresivo | con filtro, sin freno | 0.89 | 0.71 | 0.89 | -31.9 % | -22.9 % | 100 % |
+| Perfil | Config. elegida | Sharpe siempre | Sharpe app | Sharpe misma exp. | Caída máx. siempre | Caída máx. app | Caída máx. misma exp. | Placebo |
+|---|---|---|---|---|---|---|---|---|
+| conservador | con filtro, sin freno | 0.98 | **1.08** | 0.98 | -28.6 % | **-7.9 %** | -12.4 % | 6 % |
+| moderado | con filtro, sin freno | 0.98 | 0.97 | 0.98 | -28.6 % | -14.5 % | -19.6 % | 51 % |
+| agresivo | con filtro, sin freno | 0.98 | 0.83 | 0.98 | -28.6 % | -20.8 % | -21.9 % | 100 % |
 
 "Placebo" es la parte de los repartos al azar, con la misma exposición, que igualan o superan a la app. Cuanto más bajo, más habilidad real.
 
 Lo que dicen los números:
-- **El pronóstico de riesgo sí tiene información, en el perfil conservador.** Ahí el Sharpe sube (1.06 contra 0.89 de misma exposición) y ningún reparto al azar lo iguala. Eso habla del riesgo, no de la dirección del precio.
-- **En moderado y agresivo, la caída menor viene de invertir menos.** Contra misma exposición la caída queda parecida (-15.9 % contra -21.6 % en moderado; -22.9 % contra -24.3 % en agresivo) y el Sharpe queda abajo.
-- **El filtro de expectativa no aporta con el baseline.** Fuera de muestra, el azar lo iguala (94-100 %). La diferencia de Sharpe contra misma exposición no es significativa: IC 90 % de -0.35 a +0.21 en moderado.
+- **El pronóstico de riesgo tiene información en el perfil conservador.** El Sharpe sube (1.08 contra 0.98 de misma exposición), la caída máxima es la menor (-7.9 %) y solo 6 % de los repartos al azar lo igualan. Eso habla del riesgo, no de la dirección del precio.
+- **En moderado y agresivo, la caída menor viene sobre todo de invertir menos.** Contra misma exposición, el Sharpe queda igual o abajo.
+- **La elección entre configuraciones es frágil.** Con 19 activos el conservador elegía "sin filtro"; al sumar HSBC y Shell eligió "con filtro". En entrenamiento las configuraciones quedan a 0.04 de Sharpe entre sí: es ruido. Con 6 configuraciones al azar, el mejor Sharpe ya sale cerca de 0.57 solo por suerte.
 - **El freno de tendencia no mejoró el entrenamiento** en ningún perfil. Queda apagado.
 - **Este es el marcador del modelo de Felipe y Brisma:** un buen modelo hace útil el filtro de expectativa. Se mide con `--modelo model`.
 
@@ -83,7 +83,7 @@ python -m decision.evaluate_forecasts --desde 2022-01-01                 # basel
 python -m decision.evaluate_forecasts --desde 2022-01-01 --modelo model  # modelo del equipo
 ```
 
-Resultado del 24 oct 2026, **baseline**, 1,102 ventanas de 30 días (19 activos, 2022-hoy):
+Resultado del 24 oct 2026, **baseline**, 1,218 ventanas de 30 días (21 activos, 2022-hoy):
 
 | Qué se mide | Meta | Baseline |
 |---|---|---|
@@ -96,13 +96,13 @@ Resultado del 24 oct 2026, **baseline**, 1,102 ventanas de 30 días (19 activos,
 Lo que dicen los números:
 - **El intervalo está bien calibrado.** De su extremo bajo depende cuánto invierte la app, y por eso el tamaño por riesgo funciona.
 - **Las colas gordas se notan en cripto y NVDA:** el precio cae abajo del extremo bajo 9-10 % de las veces, no 5 %.
-- **La dirección no se predice.** La probabilidad de pérdida es un poco peor que la frecuencia histórica, y el orden de los rendimientos esperados va ligeramente al revés (IC por activo de -0.1 a -0.36). El promedio de 3 años mezcla la continuidad de 1-12 meses con la reversión de 13-36 meses.
+- **La dirección no se predice.** La probabilidad de pérdida es un poco peor que la frecuencia histórica, y el orden de los rendimientos esperados va ligeramente al revés (IC por activo de -0.04 a -0.36). El promedio de 3 años mezcla la continuidad de 1-12 meses con la reversión de 13-36 meses.
 - **Meta para el modelo del equipo:** skill > 0 e IC > 0, sin perder la cobertura del intervalo.
 
-Valores por defecto en `rules.py`: los que eligió el entrenamiento para el perfil por defecto (moderado). Se probaron 6 configuraciones; no hubo otras pruebas.
+Valores por defecto en `rules.py`: los que eligió el entrenamiento en los tres perfiles (con filtro, sin freno). Se probaron 6 configuraciones, con 19 y luego con 21 activos; no hubo otras pruebas.
 
 Limitaciones:
 - El efectivo rinde 0 % y no hay comisiones.
-- Los 19 activos se eligieron en 2026 (sesgo de supervivencia).
+- Los 21 activos se eligieron en 2026 (sesgo de supervivencia).
 - El calendario de bancos centrales empieza en oct 2026, así que el freno de evento no está en el backtest.
-- La prueba tiene 57 ventanas: poco para separar diferencias chicas de Sharpe del ruido.
+- La prueba tiene 57 ventanas de cartera: poco para separar diferencias chicas de Sharpe del ruido.
