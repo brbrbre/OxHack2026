@@ -94,3 +94,15 @@ def test_salta_activos_que_se_copian():
     r = plan(10_000, 30, "moderado", {"G1": ["A", "A2", "B"]}, precios, {}, lambda s, p: preds[s])
     elegidos = {c["simbolo"] for c in r["cartera"]}
     assert not {"A", "A2"} <= elegidos
+
+
+@pytest.mark.parametrize("vols", [[0.01, 0.02, 0.5], [0.01, 0.011, 0.012, 1.0], [0.005, 0.02, 0.03, 0.04, 0.05], [0.01, 0.01, 0.9]])
+def test_tope_nunca_se_pasa(vols):
+    w = _pesos([{"volatilidad": v} for v in vols])
+    assert max(w) <= TOPE_POR_ACTIVO + 1e-9
+    assert abs(sum(w) - min(1.0, len(vols) * TOPE_POR_ACTIVO)) < 1e-9
+
+
+def test_dos_activos_dejan_efectivo():
+    w = _pesos([{"volatilidad": 0.01}, {"volatilidad": 0.02}])
+    assert w == [TOPE_POR_ACTIVO, TOPE_POR_ACTIVO]
