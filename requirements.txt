@@ -4,8 +4,9 @@ pandas
 # Datos
 yfinance
 requests
-# App
-streamlit
+# API
+fastapi
+uvicorn
 # Sponsors
 psycopg[binary]
 google-genai

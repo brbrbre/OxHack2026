@@ -9,7 +9,8 @@
 | `data/` | Rocco | Bajar precios y guardarlos en caché |
 | `model/` | Felipe y Brisma | El modelo de predicción hecho a mano y su validación |
 | `decision/` | Rocco | Convertir la predicción en INVERTIR / ESPERAR / NO POR AHORA |
-| `app/` | Carlos | La app en Streamlit: lo que ve el usuario y el jurado |
+| `api/` | Rocco | Servidor FastAPI que conecta la app con el código de Python |
+| `app/` | Carlos | La app en React (Vite): lo que ve el usuario y el jurado |
 | `notebooks/` | Felipe y Brisma | Exploración y gráficas; nada de lo que corre la app vive aquí |
 | `tests/` | Cada quien, los suyos | Pruebas rápidas con pytest |
 | `docs/` | Rocco y Brisma | Pitch, texto de Devpost, capturas |
@@ -31,9 +32,18 @@ Se deciden en las revisiones, según cuánto tiempo sobre. Primero el núcleo.
 ## Ramas
 
 - `main` siempre corre. Nadie sube código roto a `main`.
-- Cada quien trabaja en su rama: `felipe/modelo`, `brisma/validacion`, `carlos/app`, `rocco/datos`.
+- Cada quien trabaja en su rama: `Felipe_Branck`, `Model_Bris`, `carlos/app`, `rocco/...` (una por bloque).
 - Para juntar: Pull Request a `main`. Otra persona le da un vistazo de 2 minutos y lo aprueba.
 - Haz `git pull` antes de empezar y commits chicos y seguido.
+
+## Cómo se conecta todo
+
+```
+app/ (React)  --HTTP-->  api/ (FastAPI)  -->  model/ + decision/ + data/
+```
+
+La app solo habla con `api/`. El contrato de las 3 rutas está en `api/README.md`.
+Mientras el API no esté, la app usa respuestas de ejemplo con la misma forma.
 
 ## Arranque (una vez)
 
@@ -46,6 +56,16 @@ pip install -r requirements.txt
 cp .env.example .env             # pon tus claves aquí
 ```
 
+Para la app (solo Carlos) hace falta Node.js 20 o más:
+
+```bash
+cd app
+npm install
+npm run dev                      # abre http://localhost:5173
+```
+
+Para el API: `uvicorn api.main:app --reload --port 8000`
+
 ## Reglas
 
 - El repo es **público**. Ninguna clave en el código: todas van en `.env`, que no se sube.
@@ -56,7 +76,7 @@ cp .env.example .env             # pon tus claves aquí
 
 ## Revisiones
 
-- **19:00 sáb:** SPY de punta a punta (datos, modelo, decisión en pantalla).
+- **19:00 sáb:** SPY de punta a punta (datos, modelo, decisión en pantalla). Si la app de React no lo muestra todavía, plan B: Streamlit sobre el mismo API.
 - **00:00 dom:** métricas reales contra el baseline. Se decide qué extras entran y quién los hace.
 - **09:00 dom:** se congela el código; solo arreglos.
 - **11:30 dom:** envío en Devpost con el link de este repo.
