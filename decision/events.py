@@ -16,12 +16,12 @@ from __future__ import annotations
 from datetime import date
 
 EVENTS = [
-    {"date": date(2026, 10, 28), "name": "Decisión de tasas de la Fed", "region": "US"},
-    {"date": date(2026, 10, 29), "name": "Decisión de tasas del BCE", "region": "EU"},
-    {"date": date(2026, 11, 5), "name": "Decisión de tasas del Banco de Inglaterra", "region": "UK"},
-    {"date": date(2026, 12, 9), "name": "Decisión de tasas de la Fed", "region": "US"},
-    {"date": date(2026, 12, 17), "name": "Decisión de tasas del BCE", "region": "EU"},
-    {"date": date(2027, 1, 27), "name": "Decisión de tasas de la Fed", "region": "US"},
+    {"date": date(2026, 10, 28), "name": "Fed rate decision", "region": "US"},
+    {"date": date(2026, 10, 29), "name": "ECB rate decision", "region": "EU"},
+    {"date": date(2026, 11, 5), "name": "Bank of England rate decision", "region": "UK"},
+    {"date": date(2026, 12, 9), "name": "Fed rate decision", "region": "US"},
+    {"date": date(2026, 12, 17), "name": "ECB rate decision", "region": "EU"},
+    {"date": date(2027, 1, 27), "name": "Fed rate decision", "region": "US"},
 ]
 
 UK_SYMBOLS = ("^FTSE", "GBPUSD=X")

@@ -35,7 +35,7 @@ def test_peor_caso_alto_sugiere_monto_menor():
     pred = {"rendimiento_esperado": 0.03, "volatilidad": 0.15, "prob_perdida": 0.42, "intervalo": (-0.22, 0.28)}
     r = decide(pred, 1000, 30, "BTCUSDT", hoy=NOVIEMBRE)
     assert r["decision"] == ESPERAR
-    assert any("invierte cerca de $455" in x for x in r["recomendaciones"])
+    assert any("about $455" in x for x in r["recomendaciones"])
 
 
 def test_perfil_agresivo_acepta_mas_riesgo():

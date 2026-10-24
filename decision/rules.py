@@ -2,6 +2,7 @@
 
 Entrada: la salida de model.predict() (ver model/README.md), el monto, el
 plazo y la fecha. Salida: la decisión, sus razones y recomendaciones.
+Los textos van en inglés porque los ve el jurado; los códigos de decisión y perfil no cambian.
 
 Uso:
     from decision.rules import decide
@@ -39,11 +40,14 @@ VOLATILIDAD_ALTA = 0.08
 
 
 def _pct(x: float) -> str:
-    return f"{x * 100:+.1f} %"
+    return f"{x * 100:+.1f}%"
 
 
 def _dinero(x: float) -> str:
     return f"-${-x:,.0f}" if x < 0 else f"${x:,.0f}"
+
+
+PERFIL_EN = {"conservador": "conservative", "moderado": "moderate", "agresivo": "aggressive"}
 
 
 def decide(pred: dict, monto: float, plazo_dias: int, simbolo: str,
@@ -65,52 +69,52 @@ def decide(pred: dict, monto: float, plazo_dias: int, simbolo: str,
     recomendaciones: list[str] = []
 
     razones.append(
-        f"En {plazo_dias} días el modelo espera {_pct(mu)}, con una probabilidad de pérdida de {p_perdida:.0%}."
+        f"Over {plazo_dias} days the model expects {_pct(mu)}, with a {p_perdida:.0%} chance of loss."
     )
     razones.append(
-        f"Rango probable: de {_dinero(peor_caso)} a {_dinero(mejor_caso)} sobre {_dinero(monto)}."
+        f"Likely range: {_dinero(peor_caso)} to {_dinero(mejor_caso)} on {_dinero(monto)}."
     )
 
     # 1. Expectativa negativa: no entrar.
     if mu <= 0 or p_perdida >= 0.5:
         decision = NO_POR_AHORA
-        razones.append("El modelo espera más probabilidad de perder que de ganar en este plazo.")
-        recomendaciones.append("Vuelve a revisar en unos días o prueba un plazo más largo.")
+        razones.append("The model sees a higher chance of losing than gaining over this period.")
+        recomendaciones.append("Check again in a few days, or try a longer period.")
 
     # 2. Decisión de tasas en los próximos días: esperar.
     elif proximos:
         e = proximos[0]
         decision = ESPERAR
         razones.append(
-            f"{e['name']} el {e['date']:%d/%m}. Los precios suelen moverse más ese día."
+            f"{e['name']} on {e['date']:%d %b}. Prices often move more on that day."
         )
-        recomendaciones.append(f"Revisa de nuevo después del {e['date']:%d/%m}.")
+        recomendaciones.append(f"Check again after {e['date']:%d %b}.")
 
     # 3. Peor caso más grande de lo que acepta el perfil: esperar o invertir menos.
     elif -bajo > tolerancia:
         decision = ESPERAR
         razones.append(
-            f"En el peor escenario perderías {_dinero(-peor_caso)} ({_pct(bajo)}); "
-            f"tu perfil {perfil} acepta hasta {tolerancia:.0%}."
+            f"In a bad scenario you could lose {_dinero(-peor_caso)} ({_pct(bajo)}); "
+            f"your {PERFIL_EN[perfil]} profile accepts up to {tolerancia:.0%}."
         )
         monto_seguro = monto * tolerancia / -bajo
         recomendaciones.append(
-            f"Si quieres entrar ya, invierte cerca de {_dinero(monto_seguro)} en lugar de {_dinero(monto)}."
+            f"If you want to invest now, put in about {_dinero(monto_seguro)} instead of {_dinero(monto)}."
         )
 
     # 4. Señal clara y riesgo aceptable: invertir.
     elif senal >= SENAL_MINIMA and p_perdida < PROB_PERDIDA_MAXIMA:
         decision = INVERTIR
-        razones.append("La ganancia esperada compensa el riesgo para tu perfil.")
+        razones.append("The expected gain makes up for the risk for your profile.")
 
     # 5. Señal débil: esperar.
     else:
         decision = ESPERAR
-        razones.append("La ganancia esperada es pequeña comparada con cuánto se mueve el precio.")
-        recomendaciones.append("Espera una señal más clara o elige un plazo más largo.")
+        razones.append("The expected gain is small compared with how much the price moves.")
+        recomendaciones.append("Wait for a clearer signal, or choose a longer period.")
 
     if decision != NO_POR_AHORA and sigma >= VOLATILIDAD_ALTA:
-        recomendaciones.append("El precio se mueve mucho: considera entrar en 3 partes, una por semana.")
+        recomendaciones.append("The price moves a lot: consider investing in 3 parts, one per week.")
 
     return {
         "decision": decision,
