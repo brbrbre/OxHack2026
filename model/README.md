@@ -1,6 +1,19 @@
-# model/ - el modelo a mano (Felipe y Brisma)
+# model/ - modelos de predicción (Brisma y Felipe)
 
-Predicción escrita con NumPy y pandas, sin librerías de ML.
+## Qué modelo usa la app
+
+- **Principal: tendencia + TDA de Brisma** (`predict_tda.py`, NOMBRE `tendencia-tda`). Momentum de 1, 3, 6 y 12 meses, más la homología persistente H0 de un embedding de Takens de los últimos 63 rendimientos, con colas empíricas. Se entrena en `modelo_regresion_tda.ipynb`; la app usa `params_tda.json` (entrenado con toda la historia).
+- **Respaldo: XGBoost de Felipe** (`predict_xgboost.py`). Se activa con `MODELO=xgboost`.
+- `predict.py` solo elige entre los dos.
+
+Para medir sin ver el futuro se usa `params_tda_hasta_2021.json`, entrenado con el mismo notebook hasta nov 2021 (`python -m model.entrenar_tda_corte`):
+
+```bash
+TDA_PARAMS=model/params_tda_hasta_2021.json python -m decision.evaluate_forecasts --desde 2022-01-01 --modelo model
+TDA_PARAMS=model/params_tda_hasta_2021.json python -m decision.calibrate --modelo model --perfil moderado
+```
+
+Con `params_tda.json` esos números quedarían dentro de la muestra: no se reportan. El walk-forward 2019-hoy de calibrate tampoco, porque 2019-2021 cae dentro del entrenamiento.
 
 ## Contrato con el resto del equipo
 

@@ -73,3 +73,15 @@ def test_ventana_es_la_misma_para_todos_los_activos():
     b = run(cripto, "BTCUSDT", plazo_dias=30, desde="2024-01-06", es_cripto=True)
     comunes = set(a["ventana"]) & set(b["ventana"])
     assert len(comunes) >= min(len(a), len(b)) - 1
+
+
+def test_salta_ventanas_si_el_modelo_pide_mas_historia():
+    precios = _serie(600)
+
+    def exigente(p, plazo):
+        if len(p) < 400:
+            raise ValueError("Need more history")
+        return {"rendimiento_esperado": 0.01, "volatilidad": 0.05, "prob_perdida": 0.4, "intervalo": (-0.08, 0.1)}
+
+    df = run(precios, "SPY", plazo_dias=30, predict=exigente, anios=3)
+    assert not df.empty and (pd.to_datetime(df["fecha"]) >= precios.index[399]).all()
