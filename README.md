@@ -39,49 +39,60 @@ History goes back to 1993 for SPY and 2017 for Bitcoin.
 ## Results
 
 All numbers below come from commands in this repo. Run them yourself.
+Two models feed the same rule. The **baseline** uses 3-year mean and volatility. **XGBoost** (`model/predict.py`) is by Felipe and Brisma.
 
 ### Does the forecast tell the truth?
 
 ```bash
-python -m decision.evaluate_forecasts --desde 2022-01-01
+python -m decision.evaluate_forecasts --desde 2022-01-01 --modelo baseline
+python -m decision.evaluate_forecasts --desde 2022-01-01 --modelo model
 ```
 
-Baseline model (3-year mean and volatility), 1,218 windows of 30 days, 21 assets, 2022 to today:
+1,218 windows of 30 days, 21 assets, 2022 to today:
 
-| Check | Target | Baseline |
-|---|---|---|
-| Real return inside the 90% interval | 90% | **92%** |
-| Real return below the 5th percentile | 5% | **4%** |
-| Brier score of chance of loss (lower is better) | below naive 0.246 | 0.252 |
-| Rank correlation, expected vs real | above 0 | -0.06 |
+| Check | Target | Baseline | XGBoost |
+|---|---|---|---|
+| Real return inside the 90% interval | 90% | 92% | 94% |
+| Real return below the 5th percentile | 5% | 4% | 3% |
+| Brier score of chance of loss (lower is better) | below naive 0.246 | 0.252 | 0.250 |
+| Rank correlation, expected vs real | above 0 | -0.06 | +0.02 |
 
-**The baseline predicts risk well and direction badly.** Its interval is well calibrated. Its direction signal is no better than chance.
+**Both models predict risk well and direction badly.** XGBoost is better on every line. It still does not beat the naive loss rate, and its rank correlation is close to zero.
 
 ### Does following Horizon pay?
 
 ```bash
-python -m decision.calibrate --perfil conservador
+python -m decision.calibrate --modelo model --perfil conservador
 ```
 
-Protocol: 6 rule settings fixed in advance, one set for all assets. Chosen on 2016-2021, tested on 2022 to today. Equal-weight portfolio of 21 assets, 30-day windows, entry at the next close.
+Protocol: 6 rule settings fixed in advance, one set for all assets. Chosen on 2016-2021, tested on 2022 to today. Equal-weight portfolio of 21 assets, 57 windows of 30 days, entry at the next close.
 
-| Profile | Sharpe, always invest | Sharpe, Horizon | Sharpe, same exposure | Max drawdown, Horizon | Max drawdown, same exposure | Placebo |
-|---|---|---|---|---|---|---|
-| Conservative | 0.98 | **1.08** | 0.98 | **-7.9%** | -12.4% | 6% |
-| Moderate | 0.98 | 0.97 | 0.98 | -14.5% | -19.6% | 51% |
-| Aggressive | 0.98 | 0.83 | 0.98 | -20.8% | -21.9% | 100% |
+Sharpe ratio on the test period. Buying and holding every asset got 0.98.
 
-- **Same exposure** invests Horizon's average fraction every time. Beating it shows skill, not just less risk.
-- **Placebo** is the share of random timings, with the same exposure, that match or beat Horizon. Lower is better.
+| Profile | Horizon, baseline | Horizon, XGBoost | Same exposure | Max drawdown, XGBoost | Max drawdown, same exposure |
+|---|---|---|---|---|---|
+| Conservative | 1.08 | **1.15** | 0.98 | **-9.2%** | -15.2% |
+| Moderate | 0.97 | **1.14** | 0.98 | **-15.9%** | -23.6% |
+| Aggressive | 0.83 | **1.09** | 0.98 | **-21.2%** | -26.7% |
+
+**Same exposure** invests Horizon's average fraction in every asset, every time.
+
+### Where does the gain come from?
+
+A gain over "same exposure" can come from two places. **Sizing:** less money in volatile assets like crypto. **Timing:** investing more before good months. To split them, we give each asset its own average fraction and keep it fixed.
+
+| Profile | XGBoost, Horizon | XGBoost, fixed size per asset | Timing gain | Baseline timing gain |
+|---|---|---|---|---|
+| Conservative | 1.15 | 1.12 | +0.03 | -0.09 |
+| Moderate | 1.14 | 1.12 | +0.02 | -0.17 |
+| Aggressive | 1.09 | 1.07 | +0.02 | -0.27 |
 
 What we learned:
-- **Conservative sizing has real skill.** Higher Sharpe, a third of the drawdown, and only 6% of random timings match it.
-- **Moderate and aggressive mostly invest less.** Their lower drawdown comes from lower exposure.
-- **The choice between settings is fragile.** Adding 2 assets changed the winner. With 6 settings, the best one shows a Sharpe near 0.57 from luck alone.
-
-### Our model
-
-[TODO: XGBoost model by Felipe and Brisma. Results from `--modelo model` go here, next to the baseline.]
+- **Most of the gain is sizing.** Horizon puts less in crypto and more in broad index funds.
+- **XGBoost timing helps a little.** 3% to 7% of random timings within each asset match it. The gain is small: +0.02 to +0.03.
+- **Baseline timing hurts.** Fixed sizing beats it in all three profiles.
+- **Re-chosen each January since 2019, Horizon trails buy-and-hold.** XGBoost Sharpe is 1.04 to 1.06, against 1.20. Drawdown is lower: -15.9% against -28.6% (moderate).
+- **The choice between settings is fragile.** Adding 2 assets changed the winner for the baseline.
 
 ## Limitations
 
@@ -89,6 +100,7 @@ What we learned:
 - The 21 assets were picked in 2026: survivorship bias.
 - The rate-decision calendar starts in October 2026, so it is not in the backtest.
 - The test has 57 portfolio windows. That is too few to separate small Sharpe gaps from noise.
+- "Fixed size per asset" uses each asset's average over the test period. It is a yardstick, not a strategy you could trade.
 
 ## How to run
 
