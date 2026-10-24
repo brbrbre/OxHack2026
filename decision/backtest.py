@@ -83,7 +83,11 @@ def run(precios: pd.Series, simbolo: str, plazo_dias: int = 30, anios: int = 10,
             continue
         pasado = precios.iloc[: pos + 1]
         real = float(precios.iloc[salida_pos] / precios.iloc[pos + 1] - 1)
-        pred = _call(predict, pasado, plazo_dias, es_cripto)
+        try:
+            pred = _call(predict, pasado, plazo_dias, es_cripto)
+        except ValueError:
+            # El modelo pide más historia que la que hay en esta fecha (ej. Solana en 2021): se salta la ventana.
+            continue
         d = decidir(pred, monto, plazo_dias, simbolo, hoy=idx[pos].date(), perfil=perfil,
                     tendencia=tendencia(pasado), params=params)
         # Fracción del monto que la app manda invertir (0 = efectivo, 1 = todo).

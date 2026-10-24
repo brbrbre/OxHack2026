@@ -37,3 +37,19 @@ def test_plazo_mas_largo_mas_riesgo():
 def test_historial_corto():
     with pytest.raises(ValueError, match="Need at least"):
         predict_tda.predict(_serie(0.001, n=300), 30)
+
+
+def test_modelo_se_elige_con_variable(monkeypatch):
+    import importlib
+    import model.predict as elegido
+    monkeypatch.setenv("MODELO", "xgboost")
+    assert importlib.reload(elegido).NOMBRE == "xgboost"
+    monkeypatch.delenv("MODELO")
+    assert importlib.reload(elegido).NOMBRE == "tendencia-tda"
+
+
+def test_parametros_con_corte_no_ven_2022():
+    import json
+    from pathlib import Path
+    p = json.loads((Path(predict_tda.__file__).with_name("params_tda_hasta_2021.json")).read_text())
+    assert p["trained_until"] < "2022-01-01"

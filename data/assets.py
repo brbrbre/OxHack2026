@@ -2,7 +2,7 @@
 Nombres y grupos en inglés porque los ve el jurado.
 
 Cada símbolo se comprobó con data.fetch el 24 oct 2026 (todos devolvieron
-historial hasta el 23-24 oct). Para agregar uno: probarlo con
+historial hasta el 23-24 oct). HSBA.L y SHEL.L se agregaron ese mismo día. Para agregar uno: probarlo con
 `python -m data.fetch SIMBOLO` y luego añadirlo aquí.
 """
 
@@ -24,7 +24,10 @@ ASSETS = {
         "FEMSAUBD.MX": "FEMSA",
     },
     "UK stocks": {
+        # Precios de Londres en peniques (GBp): 1,352 = £13.52.
         "VOD.L": "Vodafone",
+        "HSBA.L": "HSBC",
+        "SHEL.L": "Shell",
     },
     "Indices": {
         "^GSPC": "S&P 500",

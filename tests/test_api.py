@@ -6,7 +6,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api import baseline, main
-from model import predict as modelo
 
 
 def _serie(drift: float, n: int = 1000) -> pd.Series:
@@ -19,6 +18,8 @@ def _serie(drift: float, n: int = 1000) -> pd.Series:
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setattr(main, "get_close", lambda s: _serie(0.001))
+    # Las pruebas del API fijan el baseline: no dependen de que model/predict.py exista.
+    monkeypatch.setattr(main, "load_model", lambda: (None, baseline.NOMBRE))
     return TestClient(main.app)
 
 
@@ -27,7 +28,7 @@ def test_assets(client):
     assert r.status_code == 200
     body = r.json()
     assert "Crypto" in body and {"simbolo": "BTCUSDT", "nombre": "Bitcoin"} in body["Crypto"]
-    assert sum(len(v) for v in body.values()) == 19
+    assert sum(len(v) for v in body.values()) == 21
 
 
 def test_prices(client):
@@ -43,7 +44,7 @@ def test_decide_shape(client):
     body = r.json()
     assert r.status_code == 200
     assert body["decision"] in {"INVERTIR", "ESPERAR", "NO_POR_AHORA"}
-    assert body["modelo"] == modelo.NOMBRE
+    assert body["modelo"] == "baseline"
     assert body["aviso"].startswith("Educational prototype")
     for k in ["monto", "plazo_dias", "perfil", "rendimiento_esperado", "volatilidad",
               "prob_perdida", "senal", "peor_caso", "mejor_caso", "eventos"]:
@@ -63,3 +64,28 @@ def test_baseline_respeta_el_signo():
     assert up["prob_perdida"] < 0.5 < down["prob_perdida"]
     lo, hi = up["intervalo"]
     assert lo < up["rendimiento_esperado"] < hi
+
+
+def test_resumen_sin_clave_usa_plantilla(client):
+    r = client.post("/api/summary/decide", json={"simbolo": "SPY", "monto": 1000, "plazo_dias": 30, "perfil": "moderado"})
+    assert r.status_code == 200
+    assert r.json()["fuente"] == "template" and "$" in r.json()["texto"]
+
+
+def test_listen_solo_lee_resumenes_del_servidor(client, monkeypatch):
+    assert client.post("/api/listen", json={"texto": "any text"}).status_code == 400
+    texto = client.post("/api/summary/decide", json={"simbolo": "SPY", "monto": 1000, "plazo_dias": 30}).json()["texto"]
+    assert client.post("/api/listen", json={"texto": texto}).status_code == 503
+    monkeypatch.setattr(main.voz, "audio", lambda t: b"ID3fake")
+    r = client.post("/api/listen", json={"texto": texto})
+    assert r.status_code == 200 and r.headers["content-type"] == "audio/mpeg" and r.content == b"ID3fake"
+
+
+def test_ask_sin_clave_usa_la_ficha(client):
+    r = client.post("/api/ask", json={"pregunta": "What does this company do?", "simbolo": "AMXB.MX"})
+    assert r.status_code == 200 and r.json()["fuente"] == "local" and "Telcel" in r.json()["respuesta"]
+
+
+def test_ask_valida_simbolo_y_largo(client):
+    assert client.post("/api/ask", json={"pregunta": "Hi there", "simbolo": "NOPE"}).status_code in (400, 404)
+    assert client.post("/api/ask", json={"pregunta": "x" * 301}).status_code in (400, 422)

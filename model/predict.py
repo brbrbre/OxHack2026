@@ -1,10 +1,14 @@
-"""Model used by the API: trend + topology (TDA) with real tails.
+"""Modelo que usa la API. Principal: tendencia + TDA de Brisma. Respaldo: XGBoost de Felipe.
 
-The implementation lives in model/predict_tda.py and is trained in
-model/modelo_regresion_tda.ipynb (which saves model/params_tda.json).
-To go back to the baseline, delete this file.
+Se elige con la variable MODELO (por defecto "tda"; "xgboost" para el respaldo).
+Para volver al baseline, borrar este archivo.
 """
 
-from model.predict_tda import NOMBRE, predict
+import os
+
+if os.getenv("MODELO", "tda").lower() == "xgboost":
+    from model.predict_xgboost import NOMBRE, predict
+else:
+    from model.predict_tda import NOMBRE, predict
 
 __all__ = ["NOMBRE", "predict"]

@@ -4,11 +4,13 @@ Protocolo (detalle y fuentes en la investigación del equipo):
 1. Rejilla CHICA y fija antes de ver resultados: 6 configuraciones.
    Con ~6 años de entrenamiento, más pruebas harían que el mejor resultado
    salga bueno por pura suerte (Bailey y López de Prado 2014).
-2. Un solo juego de parámetros para los 19 activos (no uno por activo).
+2. Un solo juego de parámetros para todos los activos (no uno por activo).
 3. Se elige con 2016-2021 (entrenamiento) y se prueba con 2022 en adelante.
 4. Walk-forward: cada enero se vuelve a elegir con todo lo anterior.
 5. Intervalo de confianza por bootstrap de bloques circular (Ledoit y Wolf 2008)
    y un placebo: decidir al azar con la misma exposición promedio.
+6. ¿Momento o tamaño? Cada activo con SU fracción media en la prueba. Si la app
+   no le gana a eso, su ventaja viene de cuánto pone en cada activo, no de cuándo.
 
 La tolerancia de cada perfil (5 %, 10 %, 20 %) NO se calibra: la elige la persona.
 
@@ -27,7 +29,7 @@ import sys
 import numpy as np
 import pandas as pd
 
-from decision.backtest import load_predictor, run
+from decision.backtest import _call, load_predictor, run
 
 GRID = [
     {"exigir_expectativa_positiva": e, "freno_tendencia": f}
@@ -43,8 +45,26 @@ def nombre(cfg: dict) -> str:
     return f"{gate}, freno tendencia x{cfg['freno_tendencia']}"
 
 
-def cartera(simbolos, precios, es_cripto, cfg, predict, plazo, perfil) -> pd.DataFrame:
-    """Rendimiento por fecha de una cartera con el mismo peso en cada activo disponible."""
+def con_memoria(predict):
+    """Guarda cada predicción para no repetirla en las 6 configuraciones.
+
+    La predicción depende solo de los precios hasta la fecha de corte y del plazo;
+    la configuración cambia la regla, no el modelo. Con XGBoost esto baja la
+    calibración de más de una hora a unos minutos.
+    """
+    guardadas: dict = {}
+
+    def predict_guardado(precios, plazo_dias, es_cripto=False):
+        clave = (precios.name, precios.index[-1], len(precios), float(precios.iloc[-1]), plazo_dias, es_cripto)
+        if clave not in guardadas:
+            guardadas[clave] = _call(predict, precios, plazo_dias, es_cripto)
+        return dict(guardadas[clave])
+
+    return predict_guardado
+
+
+def por_activo(simbolos, precios, es_cripto, cfg, predict, plazo, perfil) -> pd.DataFrame:
+    """Una fila por activo y ventana, con el rendimiento de invertir siempre y de la app."""
     filas = []
     for s in simbolos:
         df = run(precios[s], s, plazo_dias=plazo, perfil=perfil, predict=predict,
@@ -56,6 +76,15 @@ def cartera(simbolos, precios, es_cripto, cfg, predict, plazo, perfil) -> pd.Dat
     todo = pd.concat(filas)
     todo["r_siempre"] = todo["pnl_siempre"] / 1000
     todo["r_app"] = todo["pnl_app"] / 1000
+    return todo
+
+
+def cartera(simbolos, precios, es_cripto, cfg, predict, plazo, perfil) -> pd.DataFrame:
+    """Rendimiento por fecha de una cartera con el mismo peso en cada activo disponible."""
+    return cartera_de(por_activo(simbolos, precios, es_cripto, cfg, predict, plazo, perfil))
+
+
+def cartera_de(todo: pd.DataFrame) -> pd.DataFrame:
     g = todo.groupby("ventana")
     return pd.DataFrame({
         "r_siempre": g["r_siempre"].mean(),
@@ -118,6 +147,32 @@ def placebo(df: pd.DataFrame, plazo: int, reps: int = 1000, seed: int = 1) -> fl
     return mejores / reps
 
 
+def momento_vs_tamano(detalle: pd.DataFrame, plazo: int, reps: int = 1000, seed: int = 1) -> dict:
+    """Separa el momento (cuándo invierte) del tamaño (cuánto pone en cada activo).
+
+    `detalle` trae una fila por activo y ventana (columnas ventana, simbolo,
+    fraccion, r_siempre, r_app). Se compara la app contra la misma cartera con
+    la fracción media de cada activo en todas sus ventanas. Esa referencia usa
+    el promedio de todo el periodo, así que sirve para medir, no para operar.
+    El placebo baraja las fechas de la fracción dentro de cada activo.
+    """
+    d = detalle.reset_index(drop=True)
+    fija = d.groupby("simbolo")["fraccion"].transform("mean") * d["r_siempre"]
+    real = sharpe(d["r_app"].groupby(d["ventana"]).mean(), plazo)
+    tamano = sharpe(fija.groupby(d["ventana"]).mean(), plazo)
+    rng = np.random.default_rng(seed)
+    grupos = list(d.groupby("simbolo").indices.values())
+    frac = d["fraccion"].to_numpy()
+    r = d["r_siempre"].to_numpy()
+    barajada = np.empty_like(frac)
+    mejores = 0
+    for _ in range(reps):
+        for ix in grupos:
+            barajada[ix] = frac[rng.permutation(ix)]
+        mejores += sharpe(pd.Series(barajada * r).groupby(d["ventana"]).mean(), plazo) >= real - 1e-12
+    return {"sharpe_app": real, "sharpe_tamano": tamano, "placebo": mejores / reps}
+
+
 def main(argv: list[str]) -> int:
     from data.assets import all_symbols
     from data.fetch import get_close, is_crypto
@@ -129,11 +184,13 @@ def main(argv: list[str]) -> int:
     a = ap.parse_args(argv)
 
     predict, nombre_modelo = load_predictor(a.modelo)
+    predict = con_memoria(predict)
     simbolos = all_symbols()
     precios = {s: get_close(s) for s in simbolos}
     cripto = {s: is_crypto(s) for s in simbolos}
-    carteras = {i: cartera(simbolos, precios, cripto, cfg, predict, a.plazo, a.perfil)
+    detalles = {i: por_activo(simbolos, precios, cripto, cfg, predict, a.plazo, a.perfil)
                 for i, cfg in enumerate(GRID)}
+    carteras = {i: cartera_de(d) for i, d in detalles.items()}
 
     print(f"Modelo: {nombre_modelo} | perfil {a.perfil} | plazo {a.plazo} días | "
           f"{len(simbolos)} activos, mismo peso | {len(GRID)} configuraciones probadas\n")
@@ -157,7 +214,12 @@ def main(argv: list[str]) -> int:
     lo, hi = bootstrap_dif(prueba, a.plazo)
     print(f"   Sharpe app - misma exposición: {m['sharpe_app'] - m['sharpe_misma_exp']:+.2f}  "
           f"(IC 90 % bootstrap: {lo:+.2f} a {hi:+.2f})")
-    print(f"   Placebo: {placebo(prueba, a.plazo):.0%} de los timings al azar con la misma exposición igualan o superan a la app\n")
+    print(f"   Placebo: {placebo(prueba, a.plazo):.0%} de los timings al azar con la misma exposición igualan o superan a la app")
+    d = detalles[elegida]
+    mt = momento_vs_tamano(d[d["ventana"] >= pd.Timestamp(INICIO_PRUEBA).date()], a.plazo)
+    print(f"   ¿Momento o tamaño? Sharpe app {mt['sharpe_app']:.2f} vs cada activo con su fracción media "
+          f"{mt['sharpe_tamano']:.2f} (momento {mt['sharpe_app'] - mt['sharpe_tamano']:+.2f})")
+    print(f"   Placebo por activo: {mt['placebo']:.0%} de las fechas barajadas dentro de cada activo igualan o superan a la app\n")
 
     print("3) PRUEBA AÑO POR AÑO (rend. de la cartera: siempre / app)")
     fechas = pd.to_datetime(pd.Series(prueba.index, index=prueba.index))
@@ -177,7 +239,7 @@ def main(argv: list[str]) -> int:
     print(f"   Resultado 2019-hoy: Sharpe app {mw['sharpe_app']:.2f} | siempre {mw['sharpe_siempre']:.2f} | "
           f"misma exposición {mw['sharpe_misma_exp']:.2f} | caída máx app {mw['caida_app']:.1%} vs siempre {mw['caida_siempre']:.1%}")
 
-    print("\nLimitaciones: el efectivo rinde 0 %; sin comisiones; los 19 activos se eligieron en 2026 "
+    print(f"\nLimitaciones: el efectivo rinde 0 %; sin comisiones; los {len(simbolos)} activos se eligieron en 2026 "
           "(sesgo de supervivencia); el calendario de la Fed no existe antes de oct 2026.")
     return 0
 

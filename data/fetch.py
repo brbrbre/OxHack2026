@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import sys
 import time
+import warnings
 from pathlib import Path
 
 import pandas as pd
@@ -102,8 +103,11 @@ def fetch_yahoo(symbols: list[str]) -> dict[str, pd.DataFrame]:
     """Una sola llamada por lote: Yahoo bloquea (429) si se le pide uno por uno."""
     import yfinance as yf
 
-    raw = yf.download(symbols, period="max", interval="1d", auto_adjust=True,
-                      group_by="ticker", progress=False, threads=True)
+    # yfinance imprime avisos de pandas que no afectan los datos.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        raw = yf.download(symbols, period="max", interval="1d", auto_adjust=True,
+                          group_by="ticker", progress=False, threads=True)
     out: dict[str, pd.DataFrame] = {}
     if raw is None or raw.empty:
         return out

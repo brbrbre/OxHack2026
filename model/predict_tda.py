@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -24,7 +25,8 @@ import numpy as np
 import pandas as pd
 
 NOMBRE = "tendencia-tda"
-PARAMS = Path(__file__).with_name("params_tda.json")
+# Para medir sin ver el futuro: TDA_PARAMS=model/params_tda_hasta_2021.json (entrenado solo hasta nov 2021).
+PARAMS = Path(os.getenv("TDA_PARAMS") or Path(__file__).with_name("params_tda.json"))
 MOMENTUM = (21, 63, 126, 252)
 MEDIAN_WINDOW = 252
 
