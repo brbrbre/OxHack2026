@@ -130,4 +130,4 @@ Solo redactan, explican o leen. Nunca deciden ni cambian un número. Las claves 
 - `POST /api/ask` con `{"pregunta": "...", "simbolo": "WALMEX.MX", "contexto": {...}, "historial": [{"pregunta": "...", "respuesta": "..."}]}` devuelve `{"respuesta": "...", "fuente": "gemini" | "local" | "offline"}`. `simbolo`, `contexto` e `historial` son opcionales (máximo 4 turnos, pregunta de hasta 300 caracteres). Sin Gemini contesta con la ficha del activo (`explain/fichas.py`) o con el glosario.
 - `POST /api/listen` con `{"texto": "..."}` devuelve `audio/mpeg`. Solo lee resúmenes que generó este servidor (400 si no); 503 si no hay audio, y la app usa la voz del navegador.
 
-Modelo de Gemini: `GEMINI_MODEL` (por defecto `gemini-flash-latest`). Voz: `ELEVENLABS_VOICE_ID` y `ELEVENLABS_MODEL`.
+Modelo de Gemini: `GEMINI_MODEL` (por defecto `gemini-flash-lite-latest`). Voz: `ELEVENLABS_VOICE_ID` y `ELEVENLABS_MODEL`.
