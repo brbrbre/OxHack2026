@@ -68,6 +68,8 @@ export interface PlanAssetDecision {
   grupo: string
   razon: string
   fraccion: number
+  /** Only in `invertir`: null if the asset is in the plan, otherwise why it was left out. */
+  fuera_del_plan?: string | null
 }
 
 export interface PlanNumbers {

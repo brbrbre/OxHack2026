@@ -105,7 +105,7 @@ Respuesta (ejemplo real, baseline, 24 oct 2026, recortado):
     {"simbolo": "GLD", "nombre": "Gold", "grupo": "ETFs", "peso": 0.19, "monto": 950.0}
   ],
   "efectivo": 0.0,
-  "invertir": [{"simbolo": "SPY", "nombre": "S&P 500 (SPDR)", "grupo": "ETFs", "razon": "...", "fraccion": 1.0}],
+  "invertir": [{"simbolo": "SPY", "nombre": "S&P 500 (SPDR)", "grupo": "ETFs", "razon": "...", "fraccion": 1.0, "fuera_del_plan": null}],
   "esperar": [{"simbolo": "BTCUSDT", "nombre": "Bitcoin", "grupo": "Crypto", "razon": "In a bad scenario the full amount could lose $1,097 (-21.9%); your moderate profile accepts up to 10%.", "fraccion": 0.46}],
   "no_por_ahora": [{"simbolo": "ETHUSDT", "nombre": "Ethereum", "grupo": "Crypto", "razon": "The model sees a higher chance of losing than gaining over this period.", "fraccion": 0.0}],
   "resumen": "For 90 days with a moderate profile: $1,400 in S&P 500 (Vanguard), ... Keep $0 in cash. In a bad scenario the plan could lose about $321 (-6.4%); your profile accepts up to 10%.",
@@ -119,4 +119,5 @@ Respuesta (ejemplo real, baseline, 24 oct 2026, recortado):
 - `cartera` va ordenada de mayor a menor peso: hasta 5 activos, máximo 40 % en uno, sin dos activos que se muevan casi igual (como SPY y VOO).
 - `efectivo` es lo que no conviene invertir hoy. `invertido + efectivo = monto`.
 - `invertir`, `esperar` y `no_por_ahora` traen todos los activos de los tipos elegidos, cada uno con su razón.
+- Cada activo de `invertir` trae `fuera_del_plan`: `null` si está en la cartera, o el motivo si no entró (se mueve casi igual que otro ya elegido, o la cartera ya tiene 5).
 - Tipo desconocido: 400 con `{"error": "Unknown asset types: ..."}`.
