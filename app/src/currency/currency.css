@@ -1,0 +1,11 @@
+.currency-select-wrap { position: relative; display: flex; align-items: center; flex: 0 0 auto; align-self: stretch; }
+.currency-select-wrap select { appearance: none; border: 0; border-left: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--ink-2); cursor: pointer; font: inherit; font-size: .875rem; font-weight: 500; min-height: 44px; width: 5.4rem; padding: 0 1.2rem 0 .7rem; }
+.currency-select-wrap select:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; border-radius: 4px; }
+.currency-select-wrap svg { position: absolute; right: .15rem; pointer-events: none; color: var(--ink-2); }
+.currency-budget-hint { margin-block: .45rem 0; }
+.currency-budget-hint > span { white-space: nowrap; }
+.currency-reference { color: var(--ink-2); font-size: .75rem; line-height: 1.6; margin-top: .35rem; }
+.currency-reference summary { cursor: pointer; width: fit-content; }
+.currency-reference p { margin: .35rem 0 0; max-width: 42rem; }
+.currency-reference a { color: var(--accent); text-underline-offset: 3px; }
+.currency-explanation-note { margin-block: .65rem; font-size: .8rem; }

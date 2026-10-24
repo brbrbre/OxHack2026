@@ -8,6 +8,9 @@ export interface PriceChartPoint {
   close: number | null
   range: [number, number] | null
   expected: number | null
+  forecastDay?: number
+  expectedReturn?: number
+  estimatedGain?: number
 }
 
 export interface ForecastSummary {
@@ -17,6 +20,7 @@ export interface ForecastSummary {
   low: number
   high: number
   expected: number
+  investmentAmount: number
 }
 
 export function buildPriceSeries(prices: PricesResponse | null, symbol: string, result: DecideResponse | null) {
@@ -43,9 +47,31 @@ export function buildPriceSeries(prices: PricesResponse | null, symbol: string, 
   const timestamp = last.timestamp + numbers.plazo_dias * DAY_MS
   if (![low, high, expected, timestamp].every(Number.isFinite)) return { points, historyLength, forecast }
   const endDate = new Date(timestamp).toISOString().slice(0, 10)
-  forecast = { days: numbers.plazo_dias, startDate: last.date, endDate, low, high, expected }
+  forecast = {
+    days: numbers.plazo_dias, startDate: last.date, endDate, low, high, expected,
+    investmentAmount: numbers.monto_sugerido,
+  }
   last.range = [last.close, last.close]
   last.expected = last.close
-  points.push({ date: endDate, timestamp, close: null, range: [low, high], expected })
+  last.forecastDay = 0
+  last.expectedReturn = 0
+  last.estimatedGain = 0
+  // Intermediate points illustrate the straight line already drawn to the API endpoint.
+  // They are calendar-day approximations, not additional predictions from the model.
+  for (let day = 1; day <= numbers.plazo_dias; day += 1) {
+    const progress = day / numbers.plazo_dias
+    const pointTimestamp = last.timestamp + day * DAY_MS
+    const expectedReturn = numbers.rendimiento_esperado * progress
+    points.push({
+      date: new Date(pointTimestamp).toISOString().slice(0, 10),
+      timestamp: pointTimestamp,
+      close: null,
+      range: [last.close + (low - last.close) * progress, last.close + (high - last.close) * progress],
+      expected: last.close + (expected - last.close) * progress,
+      forecastDay: day,
+      expectedReturn,
+      estimatedGain: numbers.monto_sugerido === 0 ? 0 : numbers.monto_sugerido * expectedReturn,
+    })
+  }
   return { points, historyLength, forecast }
 }

@@ -2,6 +2,38 @@
 
 The web app uses React, TypeScript, Vite and Recharts. README.md contains the team's quick-start instructions; this guide covers the frontend setup, data sources and checks in more detail.
 
+## Homepage and planner
+
+The root URL introduces Horizon through an English landing page with section navigation, an interactive example, asset marks, an explanation of the three outcomes, guided/quick setup, a responsive mobile illustration and FAQ. All planner links open ?view=planner without a page reload. This query URL also opens the planner directly after a reload, using the same root path served by Vite or the existing Python static server. The planner's Home link and brand return to the introduction; browser Back and Forward also work.
+
+The planner is loaded only on its first visit. Its mounted state stays hidden when returning home, preserving form values and results while preventing hidden focus effects. Returning to the planner resumes the current plan. The homepage does not need the Python API; its date slider uses deterministic synthetic SPY history, clearly labelled as illustrative, with a sample allocation independent of the selected date. The selected example date, closing price and change from the first example close stay synchronized. It is not live data or a forecast.
+
+The mobile section describes the current responsive website. Its phone mockup is decorative and labelled as illustrative; there is no native app download or store listing. Exact selected-symbol portfolios remain a separate proposal in SELECTED_ASSETS_API_PROPOSAL.md. Budget currencies are available using the dated reference conversion described below; selected-symbol portfolios and a live FX endpoint are still proposals.
+
+Source code is separated by page, within one Vite application:
+
+~~~text
+src/RootApp.tsx             Navigation and retained planner state
+src/pages/landing/         LandingPage, illustrative demo and landing styles
+src/pages/planner/         PlannerPage and planner styles
+src/shared/theme.css       Shared tokens, base styles, typography and asset marks
+src/components/            Planner forms, results, charts and reusable controls
+src/currency/              Currency state, amount control and dated reference rates
+src/api/, lib/, mocks/     Shared HTTP contract, calculations and sample responses
+~~~
+
+App.tsx re-exports PlannerPage and styles.css imports the shared theme and planner styles for existing isolated previews. Production main.tsx imports the shared theme; each page imports its own styles. Navigation stays at / and /?view=planner, so the existing Python static-server setup needs no new routes or deployment changes.
+
+## Budget currencies
+
+The compact dropdown beside the budget supports USD, MXN, GBP and EUR in both quick and guided setup. The currency is presentation state, separate from the shared draft: changing it preserves the exact canonical USD budget, existing analysis and selected chart day. Editing the amount converts the selected-currency input to USD once and invalidates analysis as before. API requests retain their exact fields and do not add currency metadata.
+
+For this demo, src/currency/referenceRates.ts stores the [European Central Bank reference rates](https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html) dated **23 October 2026**: 1 EUR = 1.1193 USD = 0.83728 GBP = 21.0226 MXN. All conversion factors are derived from this single snapshot. These are fixed reference rates, not live quotes, transaction rates or a prediction of exchange-rate movements. Non-USD inputs show the approximate USD equivalent and a dated disclosure with the source link. No external FX request is made at runtime, and no new Python endpoint is required.
+
+Structured budgets, suggested amounts, cash, allocations, risk amounts, investment-value charts, tooltips and accessible labels use the selected currency. Returns and allocation weights do not change. Values and projections stay in USD internally and are rounded only for display. Written API reasons, recommendations and summaries remain verbatim; a nearby note identifies their USD amounts. Historical and expected asset quotes keep their original quote units, independently of the budget currency. Changing currency never converts price-history data or generates a new analysis request.
+
+For Rocco: existing /api/decide and /api/plan requests still contain a USD monto. The currency dropdown needs no server change. A later live /api/fx endpoint can replace this snapshot in the currency module while leaving planner components and API decision logic intact. The exact selected-symbol portfolio proposal is separate and is not enabled by these changes.
+
 ## Run on Windows
 
 From the repository's app directory:
@@ -72,7 +104,7 @@ The mode selector above the form offers I have an asset in mind and Help me choo
 
 The portfolio result shows the API's invested amount, holdings and cash in a proportional bar, a legend and a table. Weights refer to the full budget, including cash; the frontend does not allocate or rebalance investments. It displays the risk against the full amount, the three decision lists with their reasons, and the API summary verbatim. An all-cash plan is a valid result. Tiny floating point cash residues are displayed as zero without changing the response. The educational notice stays below the result. The individual price chart and its cone belong to the single-asset mode.
 
-The API does not include monetary or quote-currency metadata. The form and decision amounts use USD to match the supplied contract. The chart maps symbols to quote units: .MX uses MXN, .L arrives in GBp and is displayed in GBP after dividing by 100, USDT pairs use USDT, and =X symbols show an exchange rate with its direction. Other symbols use USD. Visible prices, tooltips and axis labels share the same formatter; source prices are not modified. A negative period change uses a downward arrow.
+The API does not include monetary or quote-currency metadata. Request and response amounts remain canonical USD; budget and structured result presentation use the chosen display currency. The chart maps symbols to quote units: .MX uses MXN, .L arrives in GBp and is displayed in GBP after dividing by 100, USDT pairs use USDT, and =X symbols show an exchange rate with its direction. Other symbols use USD. Visible prices, tooltips and axis labels share the same quote formatter; source prices are not modified. A negative period change uses a downward arrow.
 
 The educational notice appears below the result in normal document flow. Analysis moves focus to the result heading; the skip link remains available for keyboard navigation. Text is at least 12 px, with body copy at 15–16 px and text contrast of at least 4.5:1 against its background.
 
@@ -87,6 +119,18 @@ The palette lives in the stylesheet's root tokens: paper #F7F8F6, surface #FFFFF
 The result headline uses the API's monto_sugerido: invest the full budget, invest part now and keep the remainder for later, or keep the whole budget for now. The frontend does not recalculate the allocation. Decision colors are reserved for the decision badge. Reasons and recommendations remain verbatim; the baseline label explains that it uses a 3-year historical average, while other model names are displayed as supplied.
 
 After analysis, the price chart adds a shaded terminal range and a dashed expected-price line. The endpoint is the last closing date plus plazo_dias in calendar days, calculated in UTC; weekends and leap days are counted. The chart uses a numeric time axis so the forecast occupies its actual duration. The terminal values use the original API price and full requested budget: low = last × (1 + peor_caso / monto), high = last × (1 + mejor_caso / monto), expected = last × (1 + rendimiento_esperado). Currency conversion is only for display. The band connects the last close to those terminal estimates; it does not claim daily model predictions. Changing the plan removes the old analysis and cone.
+
+Hovering or tapping a forecast point shows a compact tooltip: calendar date and day, hypothetical gain/loss in the selected budget currency with the expected return beside it, expected price in its native quote unit and a short suggested-investment basis. Intermediate points carry an Approximate estimate label; the exact terminal API estimate does not. A daily slider provides the same information for touch and keyboard use, with a selected point on the chart. The persistent summary prioritises gain/loss and keeps the price secondary, without repeating the full range or method inside the tooltip. A short Intermediate dates are approximate notice remains visible. The closed About this estimate disclosure contains the selected range, final calendar date and explanation of the method. Intermediate ranges say Illustrative price range, while only the endpoint says 90% price range.
+
+Intermediate values follow the same straight line from the last close to the API's final estimate; they are not daily model predictions. USD gains use monto_sugerido × rendimiento_esperado × (day / plazo_dias), independently of the asset's quote currency, and exclude cash returns and exchange-rate changes. When the suggested investment is zero, the chart shows asset estimates without a hypothetical dollar gain. Historical tooltips remain closing prices. A new analysis resets the selected day to its final horizon; unavailable or stale forecasts hide the explorer.
+
+## Portfolio charts
+
+Risk of this plan includes a compact total-value chart. It uses the complete budget times the API's portfolio return, which already includes the zero-return cash allocation; it does not apply the invested fraction a second time. The lower scenario ends at budget + peor_caso. There is no invented upper portfolio range. Cash-only plans show a flat value. The horizontal axis is Day 0 to the selected horizon because /api/plan provides no as-of date. Daily points interpolate the final API estimate and are explicitly marked approximate.
+
+Allocated assets in the legend and allocation table open an accessible modal, keeping the page from growing by one chart per holding. Its Your investment tab requests /api/decide with the allocated amount, plan horizon and profile only when opened. Value and gain use that allocated amount, even if the separate analysis suggests a different standalone amount. The original plan and allocation never change. The model label remains visible and the individual estimate is presented separately from the aggregate portfolio estimate.
+
+The modal's Price history tab requests native quote prices only when selected, with a cache for the lifetime of that modal. It does not reconstruct a historical USD portfolio from native prices or assume historical FX rates. Loading, service errors and retry are local to the modal; closing or changing the plan aborts requests. Escape and the close button restore focus to the asset. The dialog adapts to a bottom sheet on phones, while the page stays in place. Charts are loaded lazily and hidden planner charts are unmounted on the homepage.
 
 ## Checks
 

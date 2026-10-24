@@ -1,6 +1,7 @@
 import { ArrowDownRight, ArrowUpRight, CalendarClock, Info, Lightbulb, LoaderCircle } from 'lucide-react'
 import type { DecideResponse } from '../api/types'
-import { money, percentage } from '../lib/format'
+import { percentage } from '../lib/format'
+import { useCurrency } from '../currency/CurrencyContext'
 import { DECISION_LABELS, PROFILE_LABELS } from '../lib/labels'
 import AssetLogo from './AssetLogo'
 import ErrorMessage from './ErrorMessage'
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export default function DecisionCard({ result, pending, error, onRetry }: Props) {
+  const { money, currency } = useCurrency()
   const appearance = result ? appearances[result.decision] : null
   const numbers = result?.numeros
   const headline = numbers
@@ -67,6 +69,7 @@ export default function DecisionCard({ result, pending, error, onRetry }: Props)
             </dl>
             <div className="reasons">
               <h3>Here is the thinking</h3>
+              {currency !== 'USD' && <p className="field-hint currency-explanation-note">Written explanations use USD; the amounts above use {currency}.</p>}
               <ul>{result.razones.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
             </div>
             {result.recomendaciones.length > 0 && (

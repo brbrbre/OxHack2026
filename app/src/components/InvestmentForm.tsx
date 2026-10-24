@@ -4,6 +4,7 @@ import type { AssetsResponse, RiskProfile } from '../api/types'
 import { HORIZONS } from '../config'
 import { DECISION_LABELS, PROFILE_LABELS } from '../lib/labels'
 import AssetPicker from './AssetPicker'
+import CurrencyAmountInput from '../currency/CurrencyAmountInput'
 
 export interface PlanDraft {
   simbolo: string
@@ -68,15 +69,8 @@ export default function InvestmentForm({ assets, draft, onChange, onSubmit, pend
 
         <div className="field field-amount">
           <label htmlFor="amount">How much would you invest?</label>
-          <div className="amount-control">
-            <span aria-hidden="true">$</span>
-            <input id="amount" name="amount" type="number" inputMode="decimal" min="0.01" max="1000000000"
-              step="0.01" required value={draft.monto}
-              onChange={(event) => onChange({ ...draft, monto: event.target.value })}
-              aria-describedby="amount-hint" />
-            <span className="currency-label">USD</span>
-          </div>
-          <span className="field-hint" id="amount-hint">Your total budget in US dollars</span>
+          <CurrencyAmountInput value={draft.monto} hintId="amount-hint"
+            onChange={(monto) => onChange({ ...draft, monto })} />
         </div>
 
         <fieldset className="field field-horizon">

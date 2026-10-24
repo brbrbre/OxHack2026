@@ -7,10 +7,10 @@ export function money(value: number, signed = false): string {
   }).format(value).replace('US$', '$')
 }
 
-export function percentage(value: number, signed = false): string {
+export function percentage(value: number, signed = false, maximumFractionDigits = 1): string {
   return new Intl.NumberFormat('en-GB', {
     style: 'percent',
-    maximumFractionDigits: 1,
+    maximumFractionDigits,
     signDisplay: signed ? 'exceptZero' : 'auto',
   }).format(value)
 }

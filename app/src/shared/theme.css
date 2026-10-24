@@ -1,0 +1,134 @@
+:root {
+  --paper: #F7F8F6;
+  --surface: #FFFFFF;
+  --ink: #15202B;
+  --ink-2: #4A5662;
+  --line: #DCE1E5;
+  --accent: #2346A0;
+  --accent-soft: #EAF0FA;
+  --accent-hover: #193681;
+  --disabled-button: #52638B;
+  --error-ink: #76364E;
+  --error-surface: #FCF4F7;
+  --decision-invest: #1E6B45;
+  --decision-wait: #8A5A00;
+  --decision-not-now: #A3261B;
+  --decision-invest-surface: #F1F8F3;
+  --decision-wait-surface: #FFF8E8;
+  --decision-not-now-surface: #FFF3F0;
+  --ink-muted: var(--ink-2);
+  --chart-line: var(--accent);
+  --chart-grid: var(--line);
+  --forecast-line: var(--ink);
+  --forecast-boundary: #5872A5;
+  --forecast-fill: var(--accent-soft);
+  --positive: var(--ink-2);
+  --negative: var(--ink-2);
+  --asset-spy: #273F33;
+  --asset-voo: #96151D;
+  --asset-qqq: #000AD2;
+  --asset-gold: #B7841A;
+  --asset-apple: #111111;
+  --asset-microsoft: #00A4EF;
+  --asset-nvidia: #76B900;
+  --asset-walmart: #0071CE;
+  --asset-america-movil: #00539B;
+  --asset-femsa: #980033;
+  --asset-vodafone: #E60000;
+  --asset-hsbc: #DB0011;
+  --asset-shell: #FFD500;
+  --asset-sp500: #435B71;
+  --asset-ftse: #001EFF;
+  --asset-ipc: #157C80;
+  --asset-gbp-usd: #304B83;
+  --asset-usd-mxn: #006847;
+  --asset-bitcoin: #F7931A;
+  --asset-ethereum: #627EEA;
+  --asset-solana: #9945FF;
+  --asset-google: #4285F4;
+  --asset-tesla: #E82127;
+  --asset-fallback-0: #426A93;
+  --asset-fallback-1: #995337;
+  --asset-fallback-2: #73609C;
+  --asset-fallback-3: #307D7A;
+  --asset-fallback-4: #9A6C1A;
+  --asset-fallback-5: #81516B;
+  --gold-surface: #FFF6DF;
+  --gold-ink: #805500;
+  --allocation-cash: #75808B;
+  --result-shadow: 0 3px 8px #15202B08, 0 16px 40px #15202B0A;
+  font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: auto; scroll-padding-top: 24px; }
+body { margin: 0; min-width: 320px; font-size: 16px; line-height: 1.5; }
+button, input, select { font: inherit; font-variant-numeric: tabular-nums; }
+button, select, summary { -webkit-tap-highlight-color: transparent; }
+button, a, input, select, summary { outline-offset: 4px; }
+:focus-visible { outline: 3px solid var(--accent); }
+button { cursor: pointer; }
+button:disabled { cursor: wait; }
+a { color: var(--ink-2); text-decoration: none; }
+a:hover { color: var(--accent); }
+p, h1, h2, h3, ul, dl, dd { margin: 0; }
+h1, h2, h3 { color: var(--ink); }
+fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+svg { flex-shrink: 0; vertical-align: middle; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.skip-link { position: fixed; left: 16px; top: -100px; z-index: 100; padding: 12px 18px; border-radius: 4px; background: var(--accent); color: var(--surface); }
+.skip-link:focus-visible { top: 10px; color: var(--surface); }
+h1 { max-width: 900px; font-size: clamp(32px, 3.4vw, 44px); font-weight: 600; letter-spacing: -1.3px; line-height: 1.18; }
+h2 { font-size: 24px; font-weight: 600; letter-spacing: -.4px; line-height: 1.3; }
+.asset-logo { display: inline-grid; place-items: center; flex-shrink: 0; width: 32px; height: 32px; border-radius: 5px; vertical-align: middle; background: var(--surface); }
+.asset-logo-small { width: 28px; height: 28px; }
+.asset-logo > img { display: block; max-width: 100%; width: 100%; height: 100%; object-fit: contain; }
+.asset-logo-badge, .asset-logo:has(.asset-logo-letters) { border: 1px solid var(--line); background: var(--paper); }
+.asset-logo-letters { display: block; color: var(--ink-2); font-size: 12px; font-weight: 600; line-height: 1; letter-spacing: -.3px; }
+.asset-logo.asset-color-gold { border-color: var(--asset-gold); background: var(--gold-surface); }
+.asset-color-gold .asset-logo-letters { color: var(--gold-ink); }
+.asset-logo-flags { display: flex; align-items: center; width: 100%; }
+.asset-logo-flags > img { display: block; width: 62.5%; height: auto; aspect-ratio: 1; object-fit: cover; border: 1px solid var(--surface); border-radius: 50%; }
+.asset-logo-flags > img + img { margin-left: -25%; }
+.asset-color-spy { --asset-color: var(--asset-spy); }
+.asset-color-voo { --asset-color: var(--asset-voo); }
+.asset-color-qqq { --asset-color: var(--asset-qqq); }
+.asset-color-gold { --asset-color: var(--asset-gold); }
+.asset-color-apple { --asset-color: var(--asset-apple); }
+.asset-color-microsoft { --asset-color: var(--asset-microsoft); }
+.asset-color-nvidia { --asset-color: var(--asset-nvidia); }
+.asset-color-walmart { --asset-color: var(--asset-walmart); }
+.asset-color-america-movil { --asset-color: var(--asset-america-movil); }
+.asset-color-femsa { --asset-color: var(--asset-femsa); }
+.asset-color-vodafone { --asset-color: var(--asset-vodafone); }
+.asset-color-hsbc { --asset-color: var(--asset-hsbc); }
+.asset-color-shell { --asset-color: var(--asset-shell); }
+.asset-color-sp500 { --asset-color: var(--asset-sp500); }
+.asset-color-ftse { --asset-color: var(--asset-ftse); }
+.asset-color-ipc { --asset-color: var(--asset-ipc); }
+.asset-color-gbp-usd { --asset-color: var(--asset-gbp-usd); }
+.asset-color-usd-mxn { --asset-color: var(--asset-usd-mxn); }
+.asset-color-bitcoin { --asset-color: var(--asset-bitcoin); }
+.asset-color-ethereum { --asset-color: var(--asset-ethereum); }
+.asset-color-solana { --asset-color: var(--asset-solana); }
+.asset-color-google { --asset-color: var(--asset-google); }
+.asset-color-tesla { --asset-color: var(--asset-tesla); }
+.asset-color-fallback-0 { --asset-color: var(--asset-fallback-0); }
+.asset-color-fallback-1 { --asset-color: var(--asset-fallback-1); }
+.asset-color-fallback-2 { --asset-color: var(--asset-fallback-2); }
+.asset-color-fallback-3 { --asset-color: var(--asset-fallback-3); }
+.asset-color-fallback-4 { --asset-color: var(--asset-fallback-4); }
+.asset-color-fallback-5 { --asset-color: var(--asset-fallback-5); }
+h3 { font-size: 16px; font-weight: 600; line-height: 1.5; }
+@media (max-width: 760px) {
+  h1 { font-size: clamp(32px, 7vw, 40px); letter-spacing: -.9px; }
+}

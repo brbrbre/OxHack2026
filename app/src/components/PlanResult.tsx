@@ -1,30 +1,45 @@
-import { Check, Clock3, LoaderCircle, X } from 'lucide-react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { Check, ChevronRight, Clock3, LoaderCircle, X } from 'lucide-react'
 import type { PlanResponse } from '../api/types'
-import { money, percentage } from '../lib/format'
+import { percentage } from '../lib/format'
+import { useCurrency } from '../currency/CurrencyContext'
+import type { CurrencyCode } from '../currency/currency'
 import { DECISION_LABELS } from '../lib/labels'
 import { assetIdentity } from '../lib/assetIdentity'
+import { buildPlanProjection } from '../lib/valueForecast'
 import AssetLogo from './AssetLogo'
 import ErrorMessage from './ErrorMessage'
+
+const ValueGrowthChart = lazy(() => import('./ValueGrowthChart'))
+const PortfolioAssetDialog = lazy(() => import('./PortfolioAssetDialog'))
 
 interface Props {
   result: PlanResponse | null
   pending: boolean
   error: string | null
   onRetry: () => void
+  active?: boolean
 }
 
-function riskCopy(result: PlanResponse): string {
+function riskCopy(result: PlanResponse, money: (value: number, signed?: boolean) => string, currency: CurrencyCode): string {
   const { monto, peor_caso, tolerancia } = result.numeros
   const change = new Intl.NumberFormat('en-GB', {
     style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1, signDisplay: 'exceptZero',
   }).format(peor_caso / monto)
   const estimate = peor_caso > 0
     ? "The model's lower estimate is " + money(peor_caso, true) + ' (' + change + ').'
-    : 'In a bad scenario this plan could lose about ' + money(Math.round(Math.abs(peor_caso))) + ' (' + change + ').'
+    : 'In a bad scenario this plan could lose about ' + money(currency === 'USD'
+      ? Math.round(Math.abs(peor_caso)) : Math.abs(peor_caso)) + ' (' + change + ').'
   return estimate + ' Your profile accepts up to ' + percentage(tolerancia) + '.'
 }
 
-export default function PlanResult({ result, pending, error, onRetry }: Props) {
+export default function PlanResult({ result, pending, error, onRetry, active = true }: Props) {
+  const { money, currency } = useCurrency()
+  const [selection, setSelection] = useState<{ plan: PlanResponse; symbol: string } | null>(null)
+  const projection = useMemo(() => result ? buildPlanProjection(result) : null, [result])
+  const selectedHolding = active && !pending && !error && selection?.plan === result
+    ? result?.cartera.find((asset) => asset.simbolo === selection.symbol) : undefined
+  useEffect(() => { if (!active) setSelection(null) }, [active])
   const cash = result ? Math.abs(result.efectivo) < 1e-8 ? 0 : result.efectivo : 0
   const cashWeight = result ? Math.max(0, cash / result.numeros.monto) : 0
   const assetCount = result?.cartera.length ?? 0
@@ -73,6 +88,7 @@ export default function PlanResult({ result, pending, error, onRetry }: Props) {
 
           <section className="portfolio-allocation" aria-labelledby="allocation-heading">
             <h3 id="allocation-heading">Your allocation</h3>
+            <p className="allocation-chart-hint">{assetCount ? 'Select an asset to explore its growth.' : 'Your budget stays in cash.'}</p>
             <div className="allocation-bar" role="img" aria-label={allocationDescription}>
               {allocations.map((asset) => (
                 <span key={asset.simbolo} className={'allocation-segment ' + asset.tone}
@@ -86,10 +102,15 @@ export default function PlanResult({ result, pending, error, onRetry }: Props) {
             <ul className="allocation-legend">
               {allocations.map((asset) => (
                 <li key={asset.simbolo}>
+                  <button type="button" className="allocation-asset-button" aria-haspopup="dialog"
+                    aria-label={'View ' + asset.nombre + ' (' + asset.simbolo + ') investment chart, ' + money(asset.monto) + ' allocated'}
+                    onClick={() => setSelection({ plan: result, symbol: asset.simbolo })}>
                   <span className={'allocation-key ' + asset.tone} aria-hidden="true" />
                   <AssetLogo symbol={asset.simbolo} size="small" />
                   <span className="allocation-label"><strong>{asset.nombre}</strong><small>{asset.simbolo}</small></span>
                   <span className="allocation-figures"><span>{percentage(asset.peso)}</span><strong>{money(asset.monto)}</strong></span>
+                  <ChevronRight className="allocation-open-icon" size={16} aria-hidden="true" />
+                  </button>
                 </li>
               ))}
               <li>
@@ -104,10 +125,13 @@ export default function PlanResult({ result, pending, error, onRetry }: Props) {
                 <thead><tr><th scope="col">Asset</th><th scope="col">Amount</th><th scope="col">Weight</th></tr></thead>
                 <tbody>
                   {allocations.map((asset) => <tr key={asset.simbolo}>
-                    <td><span className="asset-name-row"><AssetLogo symbol={asset.simbolo} size="small" />
+                    <td><button type="button" className="portfolio-asset-link" aria-haspopup="dialog"
+                      aria-label={'View ' + asset.nombre + ' (' + asset.simbolo + ') investment chart'}
+                      onClick={() => setSelection({ plan: result, symbol: asset.simbolo })}>
+                      <span className="asset-name-row"><AssetLogo symbol={asset.simbolo} size="small" />
                       <span className="asset-name-copy"><span className="portfolio-asset-name">{asset.nombre}</span>
                         <span className="portfolio-asset-symbol">{asset.simbolo}</span></span>
-                    </span></td>
+                    </span></button></td>
                     <td>{money(asset.monto)}</td><td>{percentage(asset.peso)}</td>
                   </tr>)}
                   <tr><td><span className="portfolio-asset-name">Cash</span></td><td>{money(cash)}</td><td>{percentage(cashWeight)}</td></tr>
@@ -118,10 +142,15 @@ export default function PlanResult({ result, pending, error, onRetry }: Props) {
 
           <section className="plan-risk" aria-labelledby="plan-risk-heading">
             <h3 id="plan-risk-heading">Risk of this plan</h3>
-            <p>{riskCopy(result)}</p>
+            <p>{riskCopy(result, money, currency)}</p>
+            {active && projection && <Suspense fallback={<p role="status">Loading your plan chart…</p>}>
+              <ValueGrowthChart projection={projection} title="Total plan value" idPrefix="plan-value" compact
+                basis={'Your ' + money(result.numeros.monto) + ' budget · ' + money(cash) + ' kept in cash'} />
+            </Suspense>}
           </section>
 
           <div className="plan-classifications">
+            {currency !== 'USD' && <p className="field-hint currency-explanation-note">Written explanations and the plan summary use USD; your allocation and charts use {currency}.</p>}
             {groups.map((group) => <section className={'plan-classification ' + group.className} key={group.code} aria-labelledby={group.id}>
               <h3 id={group.id}><span className={'decision-badge ' + group.className}>
                 <group.Icon size={15} strokeWidth={2} aria-hidden="true" />{DECISION_LABELS[group.code]}</span>
@@ -142,6 +171,10 @@ export default function PlanResult({ result, pending, error, onRetry }: Props) {
             <h3 id="plan-summary-heading">Plan summary</h3>
             <p>{result.resumen}</p>
           </section>
+          {selectedHolding && <Suspense fallback={<p role="status">Opening investment chart…</p>}>
+            <PortfolioAssetDialog key={selectedHolding.simbolo} holding={selectedHolding} plan={result}
+              onClose={() => setSelection(null)} />
+          </Suspense>}
         </>
       ) : (
         <div className="outlook-placeholder">

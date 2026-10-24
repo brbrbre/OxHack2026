@@ -1,6 +1,7 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { api } from '../api/client'
 import type { PlanResponse } from '../api/types'
 import { mockPlan, planFixtures } from '../mocks/plan'
 import PlanResult from './PlanResult'
@@ -9,10 +10,11 @@ function text(value: string) {
   return renderToStaticMarkup(createElement('span', null, value)).slice(6, -7)
 }
 
-function render(result: PlanResponse | null, options: { pending?: boolean; error?: string | null } = {}) {
+function render(result: PlanResponse | null, options: { pending?: boolean; error?: string | null; active?: boolean } = {}) {
   const before = structuredClone(result)
   const html = renderToStaticMarkup(createElement(PlanResult, {
     result, pending: options.pending ?? false, error: options.error ?? null, onRetry: () => {},
+    active: options.active,
   }))
   expect(result).toEqual(before)
   return html
@@ -54,6 +56,44 @@ describe('portfolio plan presentation', () => {
       expect(html).toContain('class="portfolio-asset-symbol">' + asset.simbolo)
     }
     expect(html).toContain('Cash: 10%, $500')
+  })
+
+  it('offers semantic dialog buttons for allocated assets in the legend and table', () => {
+    const html = render(planFixtures.sample)
+    const buttons = [...html.matchAll(/<button\b[^>]*aria-haspopup="dialog"[^>]*>/g)].map((match) => match[0])
+    expect(buttons).toHaveLength(planFixtures.sample.cartera.length * 2)
+    for (const asset of planFixtures.sample.cartera) {
+      const matching = buttons.filter((button) => button.includes(text(asset.nombre + ' (' + asset.simbolo + ') investment chart')))
+      expect(matching).toHaveLength(2)
+      expect(matching.every((button) => button.includes('type="button"'))).toBe(true)
+      expect(matching.some((button) => button.includes('$900 allocated'))).toBe(true)
+    }
+    expect(buttons.some((button) => button.includes('Cash'))).toBe(false)
+  })
+
+  it('does not open a modal or request individual analyses or price history on initial render', () => {
+    const analysis = vi.spyOn(api, 'decide')
+    const prices = vi.spyOn(api, 'getPrices')
+    try {
+      const html = render(planFixtures.sample)
+      expect(html).not.toContain('<dialog')
+      expect(html).not.toContain('Opening investment chart…')
+      expect(html).not.toContain('Close asset details')
+      expect(analysis).not.toHaveBeenCalled()
+      expect(prices).not.toHaveBeenCalled()
+    } finally {
+      analysis.mockRestore()
+      prices.mockRestore()
+    }
+  })
+
+  it('keeps chart and modal unmounted while the planner is inactive', () => {
+    const html = render(planFixtures.sample, { active: false })
+    expect(html).toContain('Risk of this plan')
+    expect(html).not.toContain('Loading your plan chart…')
+    expect(html).not.toContain('Total plan value')
+    expect(html).not.toContain('<dialog')
+    expect(html).not.toContain('Opening investment chart…')
   })
 
   it('uses the budget rather than the invested amount when explaining portfolio loss', () => {
@@ -98,6 +138,7 @@ describe('portfolio plan presentation', () => {
     expect(html.match(/No assets in this group\./g)).toHaveLength(2)
     expect(html).not.toContain('NaN')
     expect(html).not.toContain('Invest $0')
+    expect(html).not.toContain('aria-haspopup="dialog"')
   })
 
   it('does not describe a positive lower estimate as a loss', () => {

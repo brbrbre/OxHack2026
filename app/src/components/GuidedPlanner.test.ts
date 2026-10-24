@@ -55,7 +55,7 @@ describe('guided planner', () => {
 
   it('keeps native amount validation and a decimal keyboard on the budget step', () => {
     const html = render()
-    expect(html).toMatch(/id="amount"[^>]*type="number"[^>]*inputMode="decimal"[^>]*min="0.01"[^>]*max="1000000000"[^>]*step="0.01"[^>]*required=""/)
+    expect(html).toMatch(/id="amount"[^>]*type="number"[^>]*inputMode="decimal"[^>]*min="0"[^>]*max="1000000000"[^>]*step="any"[^>]*required=""/)
     expect(html).toContain('value="5275.50"')
     expect(html).toContain('aria-describedby="guided-amount-hint"')
   })

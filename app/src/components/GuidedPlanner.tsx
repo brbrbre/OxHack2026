@@ -3,7 +3,8 @@ import type { FormEvent } from 'react'
 import { ArrowLeft, ArrowRight, LoaderCircle } from 'lucide-react'
 import type { AssetsResponse } from '../api/types'
 import { HORIZONS } from '../config'
-import { money } from '../lib/format'
+import { useCurrency } from '../currency/CurrencyContext'
+import CurrencyAmountInput from '../currency/CurrencyAmountInput'
 import { PROFILE_LABELS } from '../lib/labels'
 import AssetPicker from './AssetPicker'
 import type { PlanDraft, PlannerMode } from './InvestmentForm'
@@ -22,7 +23,7 @@ const riskChoices = [
 ] as const
 
 const questions = [
-  ['How much would you like to explore investing?', 'Use an amount you’re curious about. All amounts are in US dollars.'],
+  ['How much would you like to explore investing?', 'Use an amount you’re curious about. You can choose your currency beside the amount.'],
   ['How long would you leave it invested?', 'This helps us look at a period that matches your plans.'],
   ['How do you feel about ups and downs?', 'Investments can gain or lose value. Choose what you feel comfortable with.'],
   ['Does this look like your plan?', 'Check your choices, then tell us what you would like to explore.'],
@@ -39,6 +40,7 @@ const groupHelp: Record<string, string> = {
 }
 
 export interface GuidedPlannerProps {
+  active?: boolean
   assets: AssetsResponse | null
   draft: PlanDraft
   onChange: (draft: PlanDraft) => void
@@ -55,14 +57,16 @@ export interface GuidedPlannerProps {
 }
 
 export default function GuidedPlanner({ assets, draft, onChange, mode, onModeChange, onSubmit,
-  pending, unavailable, typesError, step, onStepChange, onChooseDifferent, onUseQuick }: GuidedPlannerProps) {
+  pending, unavailable, typesError, step, onStepChange, onChooseDifferent, onUseQuick, active = true }: GuidedPlannerProps) {
+  const { money } = useCurrency()
   useEffect(() => {
+    if (!active) return
     const heading = document.getElementById('guided-question-heading')
     heading?.focus({ preventScroll: true })
     if (window.matchMedia('(max-width: 760px)').matches) {
       document.querySelector('.guided-progress')?.scrollIntoView({ behavior: 'instant', block: 'start' })
     }
-  }, [step])
+  }, [step, active])
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -92,14 +96,9 @@ export default function GuidedPlanner({ assets, draft, onChange, mode, onModeCha
       <form className="guided-form" onSubmit={submit}>
         {step === 0 && <div className="field">
           <label htmlFor="amount">Amount to explore</label>
-          <div className="amount-control">
-            <span aria-hidden="true">$</span>
-            <input id="amount" name="amount" type="number" inputMode="decimal" min="0.01" max="1000000000"
-              step="0.01" required value={draft.monto} aria-describedby="guided-amount-hint"
-              onChange={(event) => onChange({ ...draft, monto: event.target.value })} />
-            <span className="currency-label">USD</span>
-          </div>
-          <p className="field-hint" id="guided-amount-hint">Your budget for this example. You can change it later.</p>
+          <CurrencyAmountInput value={draft.monto} hintId="guided-amount-hint"
+            hint="Your budget for this example. You can change it later."
+            onChange={(monto) => onChange({ ...draft, monto })} />
         </div>}
         {step === 1 && <fieldset className="field">
           <legend className="sr-only">How long would you leave it invested?</legend>
