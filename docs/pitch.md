@@ -29,15 +29,18 @@ It also tells you what to wait on, and why.
 ## 4. Does it work? (40 s) - Rocco
 
 We tested it the way a quant would.
-Six rule settings, fixed in advance. Chosen on 2016 to 2021. Tested on 2022 to today.
+Our model, by Brisma, uses momentum and topology of recent returns.
+We trained it on data up to 2021, and tested it on 2022 to today.
 
-With our XGBoost model, Horizon beat buy-and-hold at the same exposure. In all three profiles.
-Conservative: Sharpe 1.15 against 0.98. Maximum drawdown 9% against 15%.
+Its 90% range caught exactly 90% of outcomes.
+It is the only one of our three models that beats the naive chance of loss.
+
+Horizon beat buy-and-hold at the same exposure, in all three profiles.
+Moderate: Sharpe 1.17 against 0.98. Maximum drawdown 17% against 24%.
 
 Then we asked where the gain comes from.
 Most of it is sizing: less money in crypto, more in broad funds.
-Timing adds only 0.02 to 0.03 of Sharpe. Our baseline's timing made things worse.
-Re-chosen every January since 2019, Horizon trails buy-and-hold on Sharpe. It falls much less in crashes.
+Timing adds 0.08 of Sharpe. Only 1% of random timings match it.
 
 ## 5. Close (20 s) - Rocco
 
@@ -48,6 +51,8 @@ Everything we showed runs from one command in our repo.
 ## Questions the judges may ask
 
 - **Did you look at the test set?** No. Settings were chosen on 2016-2021. We report all 6, and that adding 2 assets changed the winner.
-- **Why size instead of time?** We measured both. Sizing explains most of the gain. XGBoost timing adds +0.02 to +0.03 Sharpe; 3-7% of random timings match it.
+- **Why size instead of time?** We measured both. Sizing explains most of the gain. Timing adds +0.07 to +0.08 Sharpe; 1-3% of random timings match it.
+- **Did the model see the test years?** No. For the test we retrained it with data up to November 2021. The app uses the version trained on all history.
+- **What is TDA?** Persistent homology of the last 63 returns. It tells orderly moves from erratic ones; the trend predicts better when moves are orderly.
 - **Does the model see the future?** No. It only gets prices up to the decision date, and entry is at the next close. A test fails if the model reads data on its own.
 - **Costs?** Not included. Cash earns 0%. Both are listed as limits.
