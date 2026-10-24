@@ -1,4 +1,5 @@
 """Catálogo de activos para el selector de la app.
+Nombres y grupos en inglés porque los ve el jurado.
 
 Cada símbolo se comprobó con data.fetch el 24 oct 2026 (todos devolvieron
 historial hasta el 23-24 oct). Para agregar uno: probarlo con
@@ -10,31 +11,31 @@ ASSETS = {
         "SPY": "S&P 500 (SPDR)",
         "VOO": "S&P 500 (Vanguard)",
         "QQQ": "Nasdaq 100",
-        "GLD": "Oro",
+        "GLD": "Gold",
     },
-    "Acciones EE. UU.": {
+    "US stocks": {
         "AAPL": "Apple",
         "MSFT": "Microsoft",
         "NVDA": "NVIDIA",
     },
-    "Acciones México (BMV)": {
+    "Mexican stocks (BMV)": {
         "WALMEX.MX": "Walmart de México",
         "AMXB.MX": "América Móvil",
         "FEMSAUBD.MX": "FEMSA",
     },
-    "Acciones Reino Unido": {
+    "UK stocks": {
         "VOD.L": "Vodafone",
     },
-    "Índices": {
+    "Indices": {
         "^GSPC": "S&P 500",
         "^FTSE": "FTSE 100",
         "^MXX": "S&P/BMV IPC",
     },
-    "Divisas": {
-        "GBPUSD=X": "Libra / dólar",
-        "MXN=X": "Dólar / peso mexicano",
+    "Currencies": {
+        "GBPUSD=X": "British pound / US dollar",
+        "MXN=X": "US dollar / Mexican peso",
     },
-    "Cripto": {
+    "Crypto": {
         "BTCUSDT": "Bitcoin",
         "ETHUSDT": "Ethereum",
         "SOLUSDT": "Solana",

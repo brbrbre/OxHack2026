@@ -40,7 +40,9 @@ python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env             # add your keys
-streamlit run app/main.py
+uvicorn api.main:app --port 8000 # API
+
+cd app && npm install && npm run dev   # web app on http://localhost:5173
 ```
 
 ## Team
