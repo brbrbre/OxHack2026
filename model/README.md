@@ -16,6 +16,11 @@ predict(precios: pd.Series, plazo_dias: int) -> dict
 
 `precios` son cierres diarios con fecha como índice. El contrato no cambia sin avisar a todos.
 
+## Cómo se conecta con la app
+
+Pongan la función en `model/predict.py` con `NOMBRE = "nombre-de-su-modelo"`. El API la usa sola en cuanto existe; mientras no, usa `api/baseline.py`.
+Opcional: si `predict` acepta `es_cripto: bool = False`, el API le avisa cuándo el activo cotiza 365 días al año en lugar de 252.
+
 ## Validación
 
 - En orden de tiempo, con ventanas que avanzan. Nunca mezclando fechas al azar.
