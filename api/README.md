@@ -71,6 +71,7 @@ Respuesta:
     "monto": 1000, "plazo_dias": 30, "perfil": "moderado",
     "rendimiento_esperado": 0.02, "volatilidad": 0.04, "prob_perdida": 0.31,
     "senal": 0.5, "peor_caso": -45.0, "mejor_caso": 85.0,
+    "fraccion": 1.0, "monto_sugerido": 1000.0, "tendencia_12m": 0.14,
     "eventos": []
   },
   "modelo": "baseline",
@@ -79,6 +80,8 @@ Respuesta:
 ```
 
 - `decision` es siempre `INVERTIR`, `ESPERAR` o `NO_POR_AHORA`.
+- `fraccion` (0 a 1) y `monto_sugerido` dicen cuánto conviene invertir hoy. Es el dato principal: la app lo debe mostrar grande.
+- `tendencia_12m` es el rendimiento de los últimos 12 meses (puede ser `null` si no hay historia).
 - `eventos` trae textos como `"Fed rate decision (2026-10-28)"` cuando hay uno cerca.
 - Los textos (razones, recomendaciones, eventos, aviso, nombres y grupos de activos) llegan en inglés. Los códigos de `decision` y `perfil` siguen en español: la app los traduce a sus etiquetas.
 - `modelo` dice qué predijo: `baseline` (promedio histórico, mientras el modelo de Felipe y Brisma no esté) o el nombre de su modelo.
