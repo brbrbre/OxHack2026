@@ -42,7 +42,7 @@ def procesar(conn, cuando: datetime, decidir, enviar=None, voz=None) -> dict:
     for rec in almacen.vencidos(conn, cuando):
         try:
             texto, _ = mensajes.whatsapp(rec, decidir(rec), link(rec))
-            enviar.whatsapp(rec["telefono"], texto)
+            enviar.mensaje(rec["telefono"], texto)
             almacen.actualizar(conn, rec["token"], estado="enviado", enviado_en=almacen.iso(cuando))
             hechos["enviados"] += 1
         except Exception as e:  # se guarda el motivo para verlo en /api/habit/{token}

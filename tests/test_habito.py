@@ -23,7 +23,7 @@ class Enviar:
     def __init__(self, falla=False):
         self.wa, self.llamadas, self.falla = [], [], falla
 
-    def whatsapp(self, tel, texto):
+    def mensaje(self, tel, texto):
         if self.falla:
             raise RuntimeError("Twilio 400")
         self.wa.append((tel, texto))
@@ -165,7 +165,7 @@ def test_ahora_solo_en_demo(client, monkeypatch):
     from api import main
     enviados = []
     monkeypatch.setenv("HABITO_DEMO", "1")
-    monkeypatch.setattr(main.habito_ciclo, "twilio", type("T", (), {"whatsapp": staticmethod(lambda t, x: enviados.append(x)),
+    monkeypatch.setattr(main.habito_ciclo, "twilio", type("T", (), {"mensaje": staticmethod(lambda t, x: enviados.append(x)),
                                                                      "llamar": staticmethod(lambda *a: None)}))
     r = client.post(f"/api/habit/{tk}/now")
     assert r.status_code == 200 and r.json()["estado"] == "enviado" and f"/r/{tk}" in enviados[0]
@@ -174,3 +174,20 @@ def test_ahora_solo_en_demo(client, monkeypatch):
 def test_sin_twilio_el_error_se_entiende():
     with pytest.raises(RuntimeError, match="Twilio is not set up yet"):
         twilio.whatsapp("+15550100123", "hola")
+
+
+def test_si_whatsapp_pide_plantilla_cae_a_sms(monkeypatch):
+    usados = []
+    monkeypatch.setattr(twilio, "whatsapp", lambda t, x: (_ for _ in ()).throw(RuntimeError('Twilio Messages 400: {"code":21654}')))
+    monkeypatch.setattr(twilio, "sms", lambda t, x: usados.append(("sms", x)) or "SM1")
+    assert twilio.mensaje("+15550100123", "hola") == "SM1" and usados == [("sms", "hola")]
+    monkeypatch.setattr(twilio, "whatsapp", lambda t, x: (_ for _ in ()).throw(RuntimeError("Twilio Messages 401")))
+    with pytest.raises(RuntimeError, match="401"):
+        twilio.mensaje("+15550100123", "hola")
+
+
+def test_canal_sms_directo(monkeypatch):
+    monkeypatch.setenv("HABITO_CANAL", "sms")
+    monkeypatch.setattr(twilio, "whatsapp", lambda t, x: pytest.fail("no debe usar WhatsApp"))
+    monkeypatch.setattr(twilio, "sms", lambda t, x: "SM2")
+    assert twilio.mensaje("+15550100123", "hola") == "SM2"

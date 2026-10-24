@@ -30,6 +30,27 @@ def whatsapp(telefono: str, texto: str) -> str:
                               "To": "whatsapp:" + telefono, "Body": texto})["sid"]
 
 
+def sms(telefono: str, texto: str) -> str:
+    """SMS desde el número de Twilio. La cuenta de prueba antepone "Sent from your Twilio trial account"."""
+    return _post("Messages", {"From": os.environ["TWILIO_FROM"], "To": telefono, "Body": texto})["sid"]
+
+
+def mensaje(telefono: str, texto: str) -> str:
+    """WhatsApp si se puede; si no, SMS con el mismo texto.
+
+    HABITO_CANAL=sms manda SMS directo. La cuenta de prueba de Twilio solo deja mandar por WhatsApp
+    plantillas suyas (error 21654, "ContentSid Required"), así que ahí también cae a SMS.
+    """
+    if os.getenv("HABITO_CANAL", "whatsapp") == "sms":
+        return sms(telefono, texto)
+    try:
+        return whatsapp(telefono, texto)
+    except RuntimeError as e:
+        if "21654" not in str(e):
+            raise
+        return sms(telefono, texto)
+
+
 def llamar(telefono: str, audio_url: str | None, texto: str) -> str:
     """Llama y reproduce el MP3 de ElevenLabs; si no hay audio, Twilio lee el texto."""
     cuerpo = f"<Play>{escape(audio_url)}</Play>" if audio_url else f"<Say>{escape(texto)}</Say>"
