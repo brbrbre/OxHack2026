@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 from api import baseline
 from data.assets import ASSETS, all_symbols
 from data.fetch import get_close, is_crypto
+from decision.plan import plan as armar_plan
 from decision.rules import decide
 from decision.signals import tendencia
 
@@ -135,6 +136,34 @@ def decide_route(req: DecideRequest):
         "modelo": nombre_modelo,
         "aviso": AVISO,
     }
+
+
+class PlanRequest(BaseModel):
+    monto: float = Field(gt=0, le=1e9)
+    plazo_dias: int = Field(ge=1, le=730)
+    perfil: Literal["conservador", "moderado", "agresivo"] = "moderado"
+    tipos: list[str] = Field(min_length=1)
+
+
+@app.post("/api/plan")
+def plan_route(req: PlanRequest):
+    desconocidos = [t for t in req.tipos if t not in ASSETS]
+    if desconocidos:
+        raise HTTPException(400, f"Unknown asset types: {', '.join(desconocidos)}")
+    grupos = {t: list(ASSETS[t]) for t in ASSETS if t in req.tipos}
+    simbolos = [s for g in grupos.values() for s in g]
+    precios = {s: get_close(s) for s in simbolos}
+    nombres = {s: _nombre(s) for s in simbolos}
+    _, nombre_modelo = load_model()
+
+    def predecir(simbolo, serie):
+        return run_prediction(serie, req.plazo_dias, simbolo)[0]
+
+    try:
+        r = armar_plan(req.monto, req.plazo_dias, req.perfil, grupos, precios, nombres, predecir, hoy=date.today())
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {**r, "modelo": nombre_modelo, "aviso": AVISO}
 
 
 # La app de React compilada, si existe. Va al final para no tapar /api.
