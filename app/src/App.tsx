@@ -3,13 +3,15 @@ import type { FormEvent } from 'react'
 import { ArrowDown, ArrowUpRight, BookOpen, ChevronRight, FlaskConical, Info, Sunrise } from 'lucide-react'
 import { api } from './api/client'
 import { assetTypesError, errorMessage, isAbortError } from './api/errors'
-import type { AssetsResponse, DecideResponse, PlanResponse, PricesResponse } from './api/types'
+import type { AssetsResponse, DecideResponse, PlanResponse, PricesResponse, SummaryResponse } from './api/types'
 import { DEFAULT_NOTICE, USE_MOCKS } from './config'
 import InvestmentForm from './components/InvestmentForm'
 import type { PlanDraft, PlannerMode } from './components/InvestmentForm'
 import DecisionCard from './components/DecisionCard'
 import PlanResult from './components/PlanResult'
 import ErrorMessage from './components/ErrorMessage'
+import SummaryBlock from './components/SummaryBlock'
+import AskPanel from './components/AskPanel'
 
 const PriceChart = lazy(() => import('./components/PriceChart'))
 
@@ -33,6 +35,9 @@ export default function App() {
   const [decideError, setDecideError] = useState<string | null>(null)
   const [typesError, setTypesError] = useState<string | null>(null)
   const decisionController = useRef<AbortController | null>(null)
+  const [summary, setSummary] = useState<SummaryResponse | null>(null)
+  const [summaryPending, setSummaryPending] = useState(false)
+  const summaryController = useRef<AbortController | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -71,7 +76,10 @@ export default function App() {
     return () => controller.abort()
   }, [assets, draft.simbolo, pricesAttempt, mode])
 
-  useEffect(() => () => decisionController.current?.abort(), [])
+  useEffect(() => () => {
+    decisionController.current?.abort()
+    summaryController.current?.abort()
+  }, [])
 
   useEffect(() => {
     if (!deciding && !result && !portfolio && !decideError) return
@@ -92,6 +100,9 @@ export default function App() {
 
   const clearAnalysis = useCallback(() => {
     decisionController.current?.abort()
+    summaryController.current?.abort()
+    setSummary(null)
+    setSummaryPending(false)
     setResult(null)
     setPortfolio(null)
     setDecideError(null)
@@ -124,6 +135,9 @@ export default function App() {
     decisionController.current?.abort()
     const controller = new AbortController()
     decisionController.current = controller
+    summaryController.current?.abort()
+    setSummary(null)
+    setSummaryPending(false)
     setDeciding(true)
     setResult(null)
     setPortfolio(null)
@@ -132,11 +146,19 @@ export default function App() {
     try {
       const request = { monto: amount, plazo_dias: draft.plazo_dias, perfil: draft.perfil }
       if (mode === 'plan') {
-        const response = await api.plan({ ...request, tipos: draft.tipos }, controller.signal)
-        if (!controller.signal.aborted) setPortfolio(response)
+        const body = { ...request, tipos: draft.tipos }
+        const response = await api.plan(body, controller.signal)
+        if (!controller.signal.aborted) {
+          setPortfolio(response)
+          loadSummary('plan', body)
+        }
       } else {
-        const response = await api.decide({ ...request, simbolo: draft.simbolo }, controller.signal)
-        if (!controller.signal.aborted) setResult(response)
+        const body = { ...request, simbolo: draft.simbolo }
+        const response = await api.decide(body, controller.signal)
+        if (!controller.signal.aborted) {
+          setResult(response)
+          loadSummary('decide', body)
+        }
       }
     } catch (error) {
       if (!controller.signal.aborted && !isAbortError(error)) {
@@ -147,6 +169,20 @@ export default function App() {
     } finally {
       if (!controller.signal.aborted) setDeciding(false)
     }
+  }
+
+  // The summary arrives after the answer; if it fails, the answer stays and the block disappears.
+  function loadSummary(kind: 'decide' | 'plan', body: Parameters<typeof api.summary>[1]) {
+    const controller = new AbortController()
+    summaryController.current = controller
+    setSummaryPending(true)
+    api.summary(kind, body, controller.signal).then((response) => {
+      if (!controller.signal.aborted) setSummary(response)
+    }).catch(() => {
+      if (!controller.signal.aborted) setSummary(null)
+    }).finally(() => {
+      if (!controller.signal.aborted) setSummaryPending(false)
+    })
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -196,6 +232,8 @@ export default function App() {
               ? <PlanResult result={portfolio} pending={deciding} error={decideError} onRetry={() => void analyze()} />
               : <DecisionCard result={result} pending={deciding} error={decideError}
                 onRetry={() => void analyze()} isDemo={USE_MOCKS} />}
+            <SummaryBlock summary={summary} pending={summaryPending} />
+            <AskPanel result={mode === 'asset' ? result : null} plan={mode === 'plan' ? portfolio : null} />
             <footer className="notice-bar">
               <Info size={15} aria-hidden="true" />
               <p>{(mode === 'plan' ? portfolio?.aviso : result?.aviso) ?? DEFAULT_NOTICE}</p>

@@ -98,3 +98,27 @@ export interface PlanResponse {
 export interface ApiErrorResponse {
   error: string
 }
+
+/** Plain-language summary. Gemini only rewrites the numbers above; "template" is the local fallback. */
+export interface SummaryResponse {
+  texto: string
+  fuente: 'gemini' | 'template'
+}
+
+export interface AskTurn {
+  pregunta: string
+  respuesta: string
+}
+
+export interface AskRequest {
+  pregunta: string
+  simbolo?: string
+  contexto?: Record<string, unknown>
+  historial?: AskTurn[]
+}
+
+/** "gemini": tutor answer. "local": our fact sheet while Gemini is offline. "offline": no answer. */
+export interface AskResponse {
+  respuesta: string
+  fuente: 'gemini' | 'local' | 'offline'
+}

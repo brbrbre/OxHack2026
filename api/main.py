@@ -11,14 +11,16 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import json
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Literal
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -28,6 +30,10 @@ from data.fetch import get_close, is_crypto
 from decision.plan import plan as armar_plan
 from decision.rules import decide
 from decision.signals import tendencia
+from explain import asesor, resumen, voz
+
+# Claves de los sponsors (GEMINI_API_KEY, ELEVENLABS_API_KEY, TIGER_DATABASE_URL) en .env, fuera del repo.
+load_dotenv()
 
 AVISO = "Educational prototype, not financial advice. Data: Yahoo Finance, Binance."
 APP_DIST = Path(__file__).resolve().parent.parent / "app" / "dist"
@@ -164,6 +170,55 @@ def plan_route(req: PlanRequest):
     except ValueError as e:
         raise HTTPException(400, str(e))
     return {**r, "modelo": nombre_modelo, "aviso": AVISO}
+
+
+# --- Resumen (Gemini) y audio (ElevenLabs): solo redactan y leen, nunca deciden ---
+
+@app.post("/api/summary/decide")
+def summary_decide(req: DecideRequest):
+    return resumen.resumir_decision(decide_route(req))
+
+
+@app.post("/api/summary/plan")
+def summary_plan(req: PlanRequest):
+    return resumen.resumir_plan(plan_route(req))
+
+
+class ListenRequest(BaseModel):
+    texto: str = Field(min_length=1, max_length=resumen.LARGO_MAXIMO)
+
+
+@app.post("/api/listen")
+def listen(req: ListenRequest):
+    if req.texto not in resumen.generados:
+        raise HTTPException(400, "Only summaries made by this server can be read aloud")
+    datos = voz.audio(req.texto)
+    if datos is None:
+        raise HTTPException(503, "Audio is not available right now")
+    return Response(content=datos, media_type="audio/mpeg")
+
+
+class Turno(BaseModel):
+    pregunta: str = Field(max_length=asesor.LARGO_PREGUNTA)
+    respuesta: str = Field(max_length=asesor.LARGO_RESPUESTA)
+
+
+class AskRequest(BaseModel):
+    pregunta: str = Field(min_length=2, max_length=asesor.LARGO_PREGUNTA)
+    simbolo: str | None = None
+    contexto: dict = Field(default_factory=dict)
+    historial: list[Turno] = Field(default_factory=list, max_length=asesor.TURNOS)
+
+
+@app.post("/api/ask")
+def ask(req: AskRequest):
+    """Tutor de dudas (Gemini): explica el activo y conceptos de finanzas; nunca decide."""
+    if req.simbolo is not None:
+        _check_symbol(req.simbolo)
+    if len(json.dumps(req.contexto)) > 3000:
+        raise HTTPException(400, "Context is too long")
+    return asesor.responder(req.pregunta, req.simbolo, _nombre(req.simbolo) if req.simbolo else None,
+                            req.contexto, [t.model_dump() for t in req.historial])
 
 
 # La app de React compilada, si existe. Va al final para no tapar /api.
