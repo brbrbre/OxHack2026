@@ -19,7 +19,7 @@ Copy the environment example only during first-time setup, or edit an existing .
 The only data-source switch is VITE_USE_MOCKS in app/.env:
 
 - true: synthetic prices and preset responses from src/mocks/. No Python or API server is needed.
-- false: requests go to /api/assets, /api/prices/{encoded symbol}?dias=365 and /api/decide.
+- false: requests go to /api/assets, /api/prices/{encoded symbol}?dias=365, /api/decide and /api/plan.
 
 Restart Vite after changing the environment variable. In real mode, Vite proxies /api to http://localhost:8000 and keeps the /api prefix. Components do not change. There is deliberately no automatic fallback to fake data if the real API fails.
 
@@ -37,9 +37,9 @@ For a single-server deployment, set VITE_USE_MOCKS=false before running npm.cmd 
 
 API types retain the team's Spanish field names and enum values. UI labels are English; reasons, recommendations, event text, asset names and the notice are displayed as returned by the API.
 
-The current contract is api/README.md in PR #3, on rocco/react-api (reviewed at commit 5ba986a97138332fb5e6da8dc7e86dcd9bd98900). API copy, catalogue names and catalogue groups now arrive in English and are not translated by components. Decision and risk-profile display labels are centralized in src/lib/labels.ts; wire codes remain unchanged.
+The current contract is api/README.md on main (reviewed at commit 7083e6d, including the investment plan and UK catalogue additions). API copy, catalogue names and catalogue groups arrive in English and are not translated by components. Decision and risk-profile display labels are centralized in src/lib/labels.ts; wire codes remain unchanged.
 
-The seven catalogue groups contain 19 assets. Try these presets with the form:
+The seven catalogue groups contain 21 assets, including VOD.L (Vodafone), HSBA.L (HSBC) and SHEL.L (Shell) in UK stocks. Try these presets with the form:
 
 | Asset | Sample decision |
 | --- | --- |
@@ -50,6 +50,10 @@ The seven catalogue groups contain 19 assets. Try these presets with the form:
 
 Other sample assets reuse the illustrative INVEST response. Mocks echo the submitted amount, horizon and risk profile; monetary examples scale with the amount. The ETHUSDT risk example uses a loss of $220 (-22.0%) on $1,000 and the supplied 10% moderate tolerance; it suggests $455 instead. For other profiles it asks the user to review the risk without inventing a tolerance. These fixtures are not a financial model. Sample histories are deterministic, ending on 24 October 2026 (or the preceding weekday for non-crypto assets).
 
+Decision numbers include fraccion (0 to 1), monto_sugerido (the submitted amount times that fraction), and tendencia_12m (a historical return or null when unavailable). The examples cover full investment, partial investment, no investment, positive and negative trends, a zero trend, and missing history. Monetary worst/best cases still refer to the full submitted amount, not the suggested amount.
+
+POST /api/plan accepts monto, plazo_dias, perfil and tipos (one or more exact group names from /api/assets). Its typed client and mock are ready; the Help me choose interface belongs to the later UI block and is not shown yet. src/mocks/plan.ts exports a sample for $5,000, 90 days, moderate risk, ETFs + US stocks + Crypto, plus an all-cash fixture. Generated examples preserve the requested amount, horizon, profile and groups. Every selected asset appears once in invertir, esperar or no_por_ahora, with its reason; the sample portfolio contains up to five of the investable assets, each at most 40% of the budget, and the remainder stays in efectivo. Holding amounts and cash add up to the original budget. These examples illustrate the response contract only; the frontend does not reproduce the Python portfolio algorithm. Unknown group names return HTTP 400 with the API's Unknown asset types: ... text.
+
 The API does not include monetary or quote-currency metadata. The form and decision amounts currently use dollars to match the supplied contract; the chart labels its values as the asset's quote currency rather than assuming every price is in dollars.
 
 ## Checks
@@ -59,7 +63,7 @@ npm.cmd run test
 npm.cmd run build
 ~~~
 
-Contract tests cover all three decisions, 19 assets, HTTP errors, malformed payloads, exact request bodies, cancellation and timeouts.
+Contract tests cover all three decisions, the new sizing/trend fields, 21 assets, the plan response and all-cash case, budget/weight consistency, selected-group coverage, HTTP errors, malformed payloads, exact request bodies, cancellation and timeouts.
 
 ## Files and Git
 

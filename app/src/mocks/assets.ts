@@ -19,6 +19,8 @@ export const assets: AssetsResponse = {
   ],
   'UK stocks': [
     { simbolo: 'VOD.L', nombre: 'Vodafone' },
+    { simbolo: 'HSBA.L', nombre: 'HSBC' },
+    { simbolo: 'SHEL.L', nombre: 'Shell' },
   ],
   'Indices': [
     { simbolo: '^GSPC', nombre: 'S&P 500' },

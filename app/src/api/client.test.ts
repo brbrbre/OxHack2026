@@ -3,6 +3,7 @@ import { api } from './client'
 import { fetchJson } from './http'
 import { parseDecision, parsePrices } from './validation'
 import { decisionFixtures } from '../mocks/decisions'
+import { planFixtures } from '../mocks/plan'
 
 vi.mock('../config', async (importOriginal) => ({
   ...await importOriginal<typeof import('../config')>(),
@@ -91,5 +92,35 @@ describe('real API contract', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(decisionFixtures.invest))))
     await expect(api.decide({ simbolo: 'SPY', monto: 2000, plazo_dias: 30, perfil: 'moderado' }))
       .rejects.toThrow('did not match your plan')
+  })
+
+  it('posts the exact plan request and preserves its summary and classifications', async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(planFixtures.sample)))
+    vi.stubGlobal('fetch', fetch)
+    const body = { monto: 5000, plazo_dias: 90, perfil: 'moderado' as const, tipos: ['ETFs', 'US stocks', 'Crypto'] }
+    const result = await api.plan(body)
+    expect(fetch.mock.calls[0][0]).toBe('/api/plan')
+    expect(fetch.mock.calls[0][1].method).toBe('POST')
+    expect(fetch.mock.calls[0][1].headers).toEqual({ 'Content-Type': 'application/json' })
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual(body)
+    expect(result).toEqual(planFixtures.sample)
+  })
+
+  it('preserves the unknown asset type error from the plan endpoint', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ error: 'Unknown asset types: Bonds' }), { status: 400 },
+    )))
+    await expect(api.plan({ monto: 5000, plazo_dias: 90, perfil: 'moderado', tipos: ['Bonds'] }))
+      .rejects.toMatchObject({ message: 'Unknown asset types: Bonds', status: 400 })
+  })
+
+  it.each([
+    { monto: 6000, plazo_dias: 90, perfil: 'moderado' as const, tipos: ['ETFs', 'US stocks', 'Crypto'] },
+    { monto: 5000, plazo_dias: 30, perfil: 'moderado' as const, tipos: ['ETFs', 'US stocks', 'Crypto'] },
+    { monto: 5000, plazo_dias: 90, perfil: 'agresivo' as const, tipos: ['ETFs', 'US stocks', 'Crypto'] },
+    { monto: 5000, plazo_dias: 90, perfil: 'moderado' as const, tipos: ['ETFs'] },
+  ])('rejects a plan belonging to a different request: %j', async (body) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(planFixtures.sample))))
+    await expect(api.plan(body)).rejects.toThrow('investment plan did not match your request')
   })
 })

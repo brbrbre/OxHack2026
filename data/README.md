@@ -24,7 +24,7 @@ python -m data.fetch SPY BTCUSDT WALMEX.MX      # o cualquier lista de símbolos
 
 - Acciones, ETFs, índices y FX: Yahoo Finance con `yfinance`, sin clave. Cierres ajustados por dividendos y splits.
 - Cripto (símbolos que terminan en USDT, USDC o FDUSD): Binance, sin clave. Si `api.binance.com` falla, usa `data-api.binance.vision`.
-- `data/assets.py`: los 19 activos del selector, todos comprobados el 24 oct.
+- `data/assets.py`: los 21 activos del selector, todos comprobados el 24 oct.
 
 ## Cuidado
 

@@ -26,7 +26,7 @@ def test_assets(client):
     assert r.status_code == 200
     body = r.json()
     assert "Crypto" in body and {"simbolo": "BTCUSDT", "nombre": "Bitcoin"} in body["Crypto"]
-    assert sum(len(v) for v in body.values()) == 19
+    assert sum(len(v) for v in body.values()) == 21
 
 
 def test_prices(client):
