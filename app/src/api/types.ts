@@ -68,6 +68,8 @@ export interface PlanAssetDecision {
   grupo: string
   razon: string
   fraccion: number
+  /** Only in `invertir`: null if the asset is in the plan, otherwise why it was left out. */
+  fuera_del_plan?: string | null
 }
 
 export interface PlanNumbers {
@@ -95,4 +97,51 @@ export interface PlanResponse {
 
 export interface ApiErrorResponse {
   error: string
+}
+
+/** Plain-language summary. Gemini only rewrites the numbers above; "template" is the local fallback. */
+export interface SummaryResponse {
+  texto: string
+  fuente: 'gemini' | 'template'
+}
+
+export interface AskTurn {
+  pregunta: string
+  respuesta: string
+}
+
+export interface AskRequest {
+  pregunta: string
+  simbolo?: string
+  contexto?: Record<string, unknown>
+  historial?: AskTurn[]
+}
+
+/** "gemini": tutor answer. "local": our fact sheet while Gemini is offline. "offline": no answer. */
+export interface AskResponse {
+  respuesta: string
+  fuente: 'gemini' | 'local' | 'offline'
+}
+
+export interface RemindRequest {
+  telefono: string
+  consentimiento: boolean
+  simbolo: string
+  monto: number
+  plazo_dias: number
+  perfil: RiskProfile
+}
+
+/** Reminder state: pendiente -> enviado (WhatsApp) -> abierto (link opened) or llamado (phone call). */
+export interface HabitStatus {
+  token: string
+  vence: string
+  estado: 'pendiente' | 'enviado' | 'abierto' | 'llamado' | 'error'
+  enviado_en: string | null
+  abierto_en: string | null
+  llamado_en: string | null
+  error: string | null
+  simbolo: string
+  plazo_dias: number
+  demo: boolean
 }

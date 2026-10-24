@@ -14,6 +14,7 @@ Then it answers: how much to invest **today**, and why.
 - **One asset.** Pick from 21 assets: US, Mexican and UK stocks, ETFs, indices, currencies and crypto. Horizon answers *Invest*, *Wait* or *Not now*, with the amount to invest today.
 - **Help me choose.** Give an amount, a horizon, a risk profile and the asset types you like. Horizon builds a plan with up to 5 assets and keeps the rest in cash.
 - **Reasons, not vibes.** Every answer shows its numbers: expected return, chance of loss and the bad-case loss. It also flags upcoming central bank decisions.
+- **Ask Horizon.** A money tutor built on Gemini. Ask what a company does, or what an ETF is. It explains with everyday examples, and never says buy or sell.
 
 This is an educational prototype. It is not financial advice.
 
@@ -39,49 +40,63 @@ History goes back to 1993 for SPY and 2017 for Bitcoin.
 ## Results
 
 All numbers below come from commands in this repo. Run them yourself.
+Three models feed the same rule. The **baseline** uses 3-year mean and volatility. **Trend + TDA** (by Brisma) is the one the app uses. **XGBoost** (by Felipe) is the backup.
+
+Trend + TDA reads momentum over 1, 3, 6 and 12 months. It also measures the shape of recent returns with persistent homology, a tool from topology. Its tails come from real past errors, not from a bell curve.
+
+To test it fairly, we retrained it with data up to November 2021 only. The app itself uses the version trained on all history.
 
 ### Does the forecast tell the truth?
 
 ```bash
-python -m decision.evaluate_forecasts --desde 2022-01-01
+TDA_PARAMS=model/params_tda_hasta_2021.json python -m decision.evaluate_forecasts --desde 2022-01-01 --modelo model
 ```
 
-Baseline model (3-year mean and volatility), 1,218 windows of 30 days, 21 assets, 2022 to today:
+1,218 windows of 30 days, 21 assets, 2022 to today:
 
-| Check | Target | Baseline |
-|---|---|---|
-| Real return inside the 90% interval | 90% | **92%** |
-| Real return below the 5th percentile | 5% | **4%** |
-| Brier score of chance of loss (lower is better) | below naive 0.246 | 0.252 |
-| Rank correlation, expected vs real | above 0 | -0.06 |
+| Check | Target | Baseline | XGBoost | Trend + TDA |
+|---|---|---|---|---|
+| Real return inside the 90% interval | 90% | 92% | 94% | **90%** |
+| Real return below the 5th percentile | 5% | 4% | 3% | **4%** |
+| Brier score of chance of loss (lower is better) | below naive 0.246 | 0.252 | 0.250 | **0.245** |
+| Rank correlation, expected vs real | above 0 | -0.06 | +0.02 | **+0.06** |
 
-**The baseline predicts risk well and direction badly.** Its interval is well calibrated. Its direction signal is no better than chance.
+**Trend + TDA is the only model that beats the naive loss rate.** The gain is small. Its interval is right on target.
 
 ### Does following Horizon pay?
 
 ```bash
-python -m decision.calibrate --perfil conservador
+TDA_PARAMS=model/params_tda_hasta_2021.json python -m decision.calibrate --modelo model --perfil moderado
 ```
 
-Protocol: 6 rule settings fixed in advance, one set for all assets. Chosen on 2016-2021, tested on 2022 to today. Equal-weight portfolio of 21 assets, 30-day windows, entry at the next close.
+Protocol: 6 rule settings fixed in advance, one set for all assets. Chosen on 2016-2021, tested on 2022 to today. Equal-weight portfolio of 21 assets, 57 windows of 30 days, entry at the next close.
 
-| Profile | Sharpe, always invest | Sharpe, Horizon | Sharpe, same exposure | Max drawdown, Horizon | Max drawdown, same exposure | Placebo |
+Sharpe ratio on the test period. Buying and holding every asset got 0.98.
+
+| Profile | Baseline | XGBoost | Trend + TDA | Same exposure | Max drawdown, TDA | Max drawdown, same exposure |
 |---|---|---|---|---|---|---|
-| Conservative | 0.98 | **1.08** | 0.98 | **-7.9%** | -12.4% | 6% |
-| Moderate | 0.98 | 0.97 | 0.98 | -14.5% | -19.6% | 51% |
-| Aggressive | 0.98 | 0.83 | 0.98 | -20.8% | -21.9% | 100% |
+| Conservative | 1.08 | 1.15 | **1.18** | 0.98 | **-9.1%** | -15.9% |
+| Moderate | 0.97 | 1.14 | **1.17** | 0.98 | **-16.5%** | -24.0% |
+| Aggressive | 0.83 | 1.09 | **1.10** | 0.98 | **-22.8%** | -27.5% |
 
-- **Same exposure** invests Horizon's average fraction every time. Beating it shows skill, not just less risk.
-- **Placebo** is the share of random timings, with the same exposure, that match or beat Horizon. Lower is better.
+**Same exposure** invests Horizon's average fraction in every asset, every time. We checked the Trend + TDA gain over same exposure with a bootstrap. Its 90% interval excludes zero for moderate (+0.01 to +0.38) and aggressive (+0.05 to +0.20). For conservative it does not (-0.08 to +0.45).
+
+### Where does the gain come from?
+
+A gain over "same exposure" can come from two places. **Sizing:** less money in volatile assets like crypto. **Timing:** investing more before good months. To split them, we give each asset its own average fraction and keep it fixed.
+
+| Profile | Trend + TDA, Horizon | Fixed size per asset | Timing gain | Random timings that match it | XGBoost timing gain | Baseline timing gain |
+|---|---|---|---|---|---|---|
+| Conservative | 1.18 | 1.10 | **+0.08** | 3% | +0.03 | -0.09 |
+| Moderate | 1.17 | 1.09 | **+0.08** | 1% | +0.02 | -0.17 |
+| Aggressive | 1.10 | 1.03 | **+0.07** | 1% | +0.02 | -0.27 |
 
 What we learned:
-- **Conservative sizing has real skill.** Higher Sharpe, a third of the drawdown, and only 6% of random timings match it.
-- **Moderate and aggressive mostly invest less.** Their lower drawdown comes from lower exposure.
-- **The choice between settings is fragile.** Adding 2 assets changed the winner. With 6 settings, the best one shows a Sharpe near 0.57 from luck alone.
-
-### Our model
-
-[TODO: XGBoost model by Felipe and Brisma. Results from `--modelo model` go here, next to the baseline.]
+- **Most of the gain is still sizing.** Horizon puts less in crypto and more in broad index funds.
+- **Trend + TDA times better than chance.** Its timing gain is 3 to 4 times XGBoost's. Only 1% to 3% of random timings match it. It is still small.
+- **Baseline timing hurts.** Fixed sizing beats it in all three profiles.
+- **We do not report the 2019-2021 walk-forward for Trend + TDA.** Those years are inside its training data.
+- **The choice between settings is fragile.** Adding 2 assets changed the winner for the baseline.
 
 ## Limitations
 
@@ -89,6 +104,7 @@ What we learned:
 - The 21 assets were picked in 2026: survivorship bias.
 - The rate-decision calendar starts in October 2026, so it is not in the backtest.
 - The test has 57 portfolio windows. That is too few to separate small Sharpe gaps from noise.
+- "Fixed size per asset" uses each asset's average over the test period. It is a yardstick, not a strategy you could trade.
 
 ## How to run
 

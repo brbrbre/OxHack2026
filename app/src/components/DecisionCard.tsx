@@ -24,10 +24,14 @@ export default function DecisionCard({ result, pending, error, onRetry }: Props)
   const { money, currency } = useCurrency()
   const appearance = result ? appearances[result.decision] : null
   const numbers = result?.numeros
+  // Preserve the USD headline convention without rounding USD before FX conversion.
+  const wholeDollars = currency === 'USD' && numbers && numbers.monto >= 1
+  const budget = numbers ? wholeDollars ? Math.round(numbers.monto) : numbers.monto : 0
+  const now = numbers ? Math.min(wholeDollars ? Math.round(numbers.monto_sugerido) : numbers.monto_sugerido, budget) : 0
   const headline = numbers
-    ? numbers.fraccion === 0 ? 'Keep your ' + money(numbers.monto) + ' for now'
-      : numbers.fraccion === 1 ? 'Invest the full ' + money(numbers.monto_sugerido) + ' now'
-      : 'Invest ' + money(numbers.monto_sugerido) + ' now'
+    ? now <= 0 ? 'Keep your ' + money(numbers.monto) + ' for now'
+      : now >= budget ? 'Invest the full ' + money(numbers.monto) + ' now'
+      : 'Invest ' + money(now) + ' now'
     : ''
   return (
     <section className="panel outlook-panel"
@@ -54,9 +58,9 @@ export default function DecisionCard({ result, pending, error, onRetry }: Props)
               <h2 id="outlook-heading" className="suggested-amount" tabIndex={-1}>{headline}</h2>
               <span className={'decision-badge ' + appearance.className}>{DECISION_LABELS[result.decision]}</span>
             </div>
-            {numbers.fraccion > 0 && numbers.fraccion < 1 && <p className="allocation-breakdown">
+            {now > 0 && now < budget && <p className="allocation-breakdown">
               <span>of your {money(numbers.monto)}</span>
-              <span>keep {money(numbers.monto - numbers.monto_sugerido)} for later</span>
+              <span>keep {money(budget - now)} for later</span>
             </p>}
             <dl className="plan-summary">
               <div className="plan-summary-asset"><dt>Asset</dt><dd className="asset-name-row">

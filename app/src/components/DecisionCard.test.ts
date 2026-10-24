@@ -5,6 +5,8 @@ import type { DecideResponse } from '../api/types'
 import { DECISION_LABELS, PROFILE_LABELS } from '../lib/labels'
 import { decisionFixtures } from '../mocks/decisions'
 import DecisionCard from './DecisionCard'
+import { CurrencyProvider } from '../currency/CurrencyContext'
+import { formatMoney } from '../currency/currency'
 
 function render(result: DecideResponse | null, options: { pending?: boolean; error?: string | null } = {}) {
   const before = structuredClone(result)
@@ -54,8 +56,27 @@ describe('investment amount presentation', () => {
     result.numeros.fraccion = 0.5
     result.numeros.monto_sugerido = 612.34
     const html = render(result)
-    expect(html).toContain('>Invest $612.34 now</h2>')
-    expect(html).toContain('keep $387.66 for later')
+    expect(html).toContain('>Invest $612 now</h2>')
+    expect(html).toContain('keep $388 for later')
+  })
+
+  it('rounds the headline to whole units without hiding a full or empty amount', () => {
+    const almostAll = structuredClone(decisionFixtures.waitRisk)
+    almostAll.numeros.fraccion = 0.9996
+    almostAll.numeros.monto_sugerido = 999.6
+    expect(render(almostAll)).toContain('>Invest the full $1,000 now</h2>')
+    expect(render(almostAll)).not.toContain('allocation-breakdown')
+
+    const cents = structuredClone(decisionFixtures.waitRisk)
+    cents.numeros.fraccion = 0.39338
+    cents.numeros.monto_sugerido = 393.38
+    expect(render(cents)).toContain('>Invest $393 now</h2>')
+    expect(render(cents)).toContain('keep $607 for later')
+
+    const tiny = structuredClone(decisionFixtures.waitRisk)
+    tiny.numeros.fraccion = 0.0004
+    tiny.numeros.monto_sugerido = 0.4
+    expect(render(tiny)).toContain('>Keep your $1,000 for now</h2>')
   })
 
   it('keeps the full budget when no investment is suggested', () => {
@@ -64,6 +85,32 @@ describe('investment amount presentation', () => {
     expect(html).toContain('class="decision-badge not-now">Not now</span>')
     expect(html).not.toContain('allocation-breakdown')
     expect(html).not.toContain('>Invest $0 now</h2>')
+  })
+
+  it('converts the supplied partial amount and cash without first rounding USD', () => {
+    const result = structuredClone(decisionFixtures.waitRisk)
+    result.numeros.monto = 1000.43
+    result.numeros.monto_sugerido = 393.38
+    for (const currency of ['MXN', 'GBP', 'EUR'] as const) {
+      const html = renderToStaticMarkup(createElement(CurrencyProvider, { initialCurrency: currency,
+        children: createElement(DecisionCard, { result, pending: false, error: null, onRetry: () => {}, isDemo: false }),
+      }))
+      expect(html).toContain('>Invest ' + formatMoney(393.38, currency) + ' now</h2>')
+      expect(html).toContain('keep ' + formatMoney(1000.43 - 393.38, currency) + ' for later')
+      expect(html).not.toContain('>Invest ' + formatMoney(393, currency) + ' now</h2>')
+    }
+  })
+
+  it('does not round a valid sub-dollar budget into a zero investment', () => {
+    const result = structuredClone(decisionFixtures.invest)
+    result.numeros.monto = 0.4
+    result.numeros.monto_sugerido = 0.4
+    expect(render(result)).toContain('>Invest the full $0.40 now</h2>')
+    result.numeros.fraccion = 0.5
+    result.numeros.monto_sugerido = 0.2
+    const html = render(result)
+    expect(html).toContain('>Invest $0.20 now</h2>')
+    expect(html).toContain('keep $0.20 for later')
   })
 
   it('uses centralized English labels while leaving Spanish codes unchanged', () => {

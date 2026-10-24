@@ -11,14 +11,21 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import json
+import os
+import re
+import threading
+import time
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlencode
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -28,6 +35,12 @@ from data.fetch import get_close, is_crypto
 from decision.plan import plan as armar_plan
 from decision.rules import decide
 from decision.signals import tendencia
+from explain import asesor, resumen, voz
+from tiger import db as tiger
+from habito import almacen as habito_db, ciclo as habito_ciclo, mensajes as habito_mensajes
+
+# Claves de los sponsors (GEMINI_API_KEY, ELEVENLABS_API_KEY, TIGER_DATABASE_URL) en .env, fuera del repo.
+load_dotenv()
 
 AVISO = "Educational prototype, not financial advice. Data: Yahoo Finance, Binance."
 APP_DIST = Path(__file__).resolve().parent.parent / "app" / "dist"
@@ -126,6 +139,12 @@ def decide_route(req: DecideRequest):
     r = decide(pred, req.monto, req.plazo_dias, req.simbolo, hoy=date.today(), perfil=req.perfil,
                tendencia=tendencia(precios))
     numeros = {k: v for k, v in r["numeros"].items() if k != "simbolo"}
+    if tiger.url():
+        # Se guarda para calificarla cuando pase el plazo (python -m tiger.cargar --calificar).
+        fila = (tiger.en_utc(precios.index[-1]), req.simbolo, req.plazo_dias, nombre_modelo, "live", req.perfil,
+                float(pred["rendimiento_esperado"]), float(pred["intervalo"][0]), float(pred["intervalo"][1]),
+                float(pred["prob_perdida"]), float(numeros.get("fraccion", 0.0)), r["decision"], None)
+        threading.Thread(target=tiger.guardar_en_vivo, args=(fila,), daemon=True).start()
     return {
         "simbolo": req.simbolo,
         "nombre": _nombre(req.simbolo),
@@ -164,6 +183,160 @@ def plan_route(req: PlanRequest):
     except ValueError as e:
         raise HTTPException(400, str(e))
     return {**r, "modelo": nombre_modelo, "aviso": AVISO}
+
+
+# --- Resumen (Gemini) y audio (ElevenLabs): solo redactan y leen, nunca deciden ---
+
+@app.post("/api/summary/decide")
+def summary_decide(req: DecideRequest):
+    return resumen.resumir_decision(decide_route(req))
+
+
+@app.post("/api/summary/plan")
+def summary_plan(req: PlanRequest):
+    return resumen.resumir_plan(plan_route(req))
+
+
+class ListenRequest(BaseModel):
+    texto: str = Field(min_length=1, max_length=resumen.LARGO_MAXIMO)
+
+
+@app.post("/api/listen")
+def listen(req: ListenRequest):
+    if req.texto not in resumen.generados:
+        raise HTTPException(400, "Only summaries made by this server can be read aloud")
+    datos = voz.audio(req.texto)
+    if datos is None:
+        raise HTTPException(503, "Audio is not available right now")
+    return Response(content=datos, media_type="audio/mpeg")
+
+
+class Turno(BaseModel):
+    pregunta: str = Field(max_length=asesor.LARGO_PREGUNTA)
+    respuesta: str = Field(max_length=asesor.LARGO_RESPUESTA)
+
+
+class AskRequest(BaseModel):
+    pregunta: str = Field(min_length=2, max_length=asesor.LARGO_PREGUNTA)
+    simbolo: str | None = None
+    contexto: dict = Field(default_factory=dict)
+    historial: list[Turno] = Field(default_factory=list, max_length=asesor.TURNOS)
+
+
+@app.post("/api/ask")
+def ask(req: AskRequest):
+    """Tutor de dudas (Gemini): explica el activo y conceptos de finanzas; nunca decide."""
+    if req.simbolo is not None:
+        _check_symbol(req.simbolo)
+    if len(json.dumps(req.contexto)) > 3000:
+        raise HTTPException(400, "Context is too long")
+    return asesor.responder(req.pregunta, req.simbolo, _nombre(req.simbolo) if req.simbolo else None,
+                            req.contexto, [t.model_dump() for t in req.historial])
+
+
+# --- Hábito: recordatorio por WhatsApp (Gemini redacta) y llamada (voz de ElevenLabs) ---
+
+_habito = None
+
+
+def habito_conn():
+    global _habito
+    if _habito is None:
+        _habito = habito_db.conectar()
+    return _habito
+
+
+class RemindRequest(BaseModel):
+    telefono: str = Field(min_length=8, max_length=20)
+    consentimiento: bool
+    simbolo: str
+    monto: float = Field(gt=0, le=1e9)
+    plazo_dias: int = Field(ge=1, le=730)
+    perfil: Literal["conservador", "moderado", "agresivo"] = "moderado"
+
+
+def _vista(rec: dict) -> dict:
+    claves = ("token", "vence", "estado", "enviado_en", "abierto_en", "llamado_en", "error", "simbolo", "plazo_dias")
+    return {k: rec[k] for k in claves} | {"demo": os.getenv("HABITO_DEMO") == "1"}
+
+
+def _decidir_hoy(rec: dict) -> dict:
+    return decide_route(DecideRequest(simbolo=rec["simbolo"], monto=rec["monto"], plazo_dias=rec["plazo_dias"],
+                                      perfil=rec["perfil"]))
+
+
+@app.post("/api/habit/remind")
+def habit_remind(req: RemindRequest):
+    """Guarda el recordatorio. Vence al terminar el plazo; la respuesta guardada es la de hoy."""
+    telefono = req.telefono.replace(" ", "")
+    if not req.consentimiento:
+        raise HTTPException(400, "Please agree to receive the reminder")
+    if not re.fullmatch(r"\+[1-9][0-9]{7,14}", telefono):
+        raise HTTPException(400, "Use the international format, for example +15550100123")
+    if telefono not in habito_ciclo.permitidos():
+        raise HTTPException(403, "In this demo, reminders only go to the team's verified numbers")
+    _check_symbol(req.simbolo)
+    hoy = decide_route(DecideRequest(simbolo=req.simbolo, monto=req.monto, plazo_dias=req.plazo_dias, perfil=req.perfil))
+    rec = habito_db.crear(habito_conn(), telefono, req.simbolo, _nombre(req.simbolo), req.monto, req.plazo_dias,
+                          req.perfil, hoy["decision"], float(hoy["numeros"].get("monto_sugerido", req.monto)))
+    return _vista(rec)
+
+
+@app.get("/api/habit/{token}")
+def habit_status(token: str):
+    rec = habito_db.obtener(habito_conn(), token)
+    if not rec:
+        raise HTTPException(404, "Reminder not found")
+    return _vista(rec)
+
+
+@app.post("/api/habit/{token}/now")
+def habit_now(token: str):
+    """Solo en la demo: vence el recordatorio ya y corre el ciclo, para no esperar 180 días."""
+    if os.getenv("HABITO_DEMO") != "1":
+        raise HTTPException(403, "Demo mode is off")
+    conn = habito_conn()
+    if not habito_db.obtener(conn, token):
+        raise HTTPException(404, "Reminder not found")
+    habito_db.actualizar(conn, token, vence=habito_db.iso(habito_db.ahora()))
+    habito_ciclo.procesar(conn, habito_db.ahora(), _decidir_hoy, voz=voz)
+    return _vista(habito_db.obtener(conn, token))
+
+
+@app.get("/r/{token}")
+def habit_open(token: str):
+    """Link del WhatsApp: marca el recordatorio como abierto y abre la app con el mismo plan."""
+    conn = habito_conn()
+    rec = habito_db.obtener(conn, token)
+    if not rec:
+        return RedirectResponse("/")
+    if not rec["abierto_en"]:
+        habito_db.actualizar(conn, token, abierto_en=habito_db.iso(habito_db.ahora()),
+                             estado="abierto" if rec["estado"] == "enviado" else rec["estado"])
+    q = urlencode({"simbolo": rec["simbolo"], "monto": int(rec["monto"]), "plazo": rec["plazo_dias"], "perfil": rec["perfil"]})
+    return RedirectResponse(f"/?{q}")
+
+
+@app.get("/api/habit/audio/{token}.mp3")
+def habit_audio(token: str):
+    rec = habito_db.obtener(habito_conn(), token)
+    datos = voz.audio(habito_mensajes.guion_llamada(rec)) if rec else None
+    if datos is None:
+        raise HTTPException(404, "No audio")
+    return Response(content=datos, media_type="audio/mpeg")
+
+
+def _ciclo_en_fondo():
+    while True:
+        try:
+            habito_ciclo.procesar(habito_conn(), habito_db.ahora(), _decidir_hoy, voz=voz)
+        except Exception:
+            pass
+        time.sleep(20)
+
+
+if os.getenv("HABITO_AUTO") == "1":
+    threading.Thread(target=_ciclo_en_fondo, daemon=True).start()
 
 
 # La app de React compilada, si existe. Va al final para no tapar /api.

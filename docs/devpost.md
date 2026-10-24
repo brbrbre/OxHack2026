@@ -23,11 +23,12 @@ If you don't know what to buy, "Help me choose" builds a plan of up to five asse
 ## How we built it
 
 - Data: Yahoo Finance and Binance, 21 assets, history back to 1993.
-- Model: a baseline (3-year mean and volatility) and an XGBoost quantile model. Both only see prices up to the decision date.
+- Model: trend + topology (TDA) by Brisma, with an XGBoost backup and a simple baseline. All only see prices up to the decision date.
+- Gemini: writes a short summary and answers money questions. It never changes the numbers.
 - Decision rule: invest `min(1, tolerance / |bad case|)` of the amount. Not now if a loss is expected. Half now if a rate decision is 3 days away.
 - Backtest: 30-day windows, entry at the next close, one date grid for all assets.
 - Calibration: 6 settings fixed in advance, chosen on 2016-2021, tested on 2022-today. Block bootstrap and a placebo of random timings.
-- Stack: Python, pandas, NumPy, XGBoost, FastAPI, React, Recharts.
+- Stack: Python, pandas, NumPy, XGBoost, FastAPI, React, Recharts, Gemini API.
 
 ## Challenges we ran into
 
@@ -37,11 +38,15 @@ We also caught a bug in our own backtest. It mixed crypto and stock dates and sh
 
 ## Accomplishments that we're proud of
 
-Out of sample, conservative Horizon beat buy-and-hold at the same exposure. Sharpe was 1.08 against 0.98. Drawdown was 7.9% against 12.4%. Only 6% of random timings matched it.
+Out of sample, Horizon beat buy-and-hold at the same exposure in all three profiles. Moderate Sharpe was 1.17 against 0.98. Drawdown was 16.5% against 24.0%. To keep it honest, the test model was trained on data up to 2021 only.
+
+We also checked where that gain comes from. Most of it is sizing: less money in volatile assets. Timing adds +0.07 to +0.08 Sharpe, and only 1-3% of random timings match it.
 
 ## What we learned
 
-A forecast can be good at risk and useless at direction. Ours put 92% of outcomes inside its 90% range, but could not rank winners. Measuring both kept us honest.
+A model can look great until you check what it was trained on. Our TDA model's saved weights covered 2022-2026, so we retrained it up to 2021 before testing. Its 90% range then caught exactly 90% of outcomes.
+
+A placebo can fool you too. Our first placebo only shuffled the portfolio's total exposure. Shuffling within each asset showed our baseline's "skill" was sizing, not timing.
 
 ## What's next
 
@@ -49,7 +54,7 @@ Cash earning the T-bill rate, trading costs, and more assets to reduce survivors
 
 ## Built with
 
-python, pandas, numpy, xgboost, fastapi, react, typescript, recharts, yfinance, binance-api
+python, pandas, numpy, xgboost, fastapi, react, typescript, recharts, yfinance, binance-api, gemini
 
 ## Links
 

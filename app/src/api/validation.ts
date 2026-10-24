@@ -1,5 +1,5 @@
 import { ApiError } from './errors'
-import type { AssetsResponse, DecideResponse, PlanAllocation, PlanAssetDecision, PlanResponse, PricesResponse } from './types'
+import type { AssetsResponse, DecideResponse, PlanAllocation, PlanAssetDecision, PlanResponse, PricesResponse, SummaryResponse, AskResponse, HabitStatus } from './types'
 
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -76,7 +76,8 @@ function planAsset(value: unknown): value is PlanAssetDecision {
   return record(value) && typeof value.simbolo === 'string' && value.simbolo.length > 0 &&
     typeof value.nombre === 'string' && value.nombre.length > 0 &&
     typeof value.grupo === 'string' && value.grupo.length > 0 &&
-    typeof value.razon === 'string' && fraction(value.fraccion)
+    typeof value.razon === 'string' && fraction(value.fraccion) &&
+    (value.fuera_del_plan === undefined || value.fuera_del_plan === null || typeof value.fuera_del_plan === 'string')
 }
 
 function allocation(value: unknown): value is PlanAllocation {
@@ -120,4 +121,23 @@ export function parsePlan(value: unknown): PlanResponse {
     return invalid('investment plan')
   }
   return value as unknown as PlanResponse
+}
+
+export function parseSummary(value: unknown): SummaryResponse {
+  if (!record(value) || typeof value.texto !== 'string' || value.texto.trim() === '' ||
+      (value.fuente !== 'gemini' && value.fuente !== 'template')) return invalid('summary')
+  return { texto: value.texto, fuente: value.fuente }
+}
+
+export function parseAsk(value: unknown): AskResponse {
+  if (!record(value) || typeof value.respuesta !== 'string' || value.respuesta.trim() === '' ||
+      !['gemini', 'local', 'offline'].includes(String(value.fuente))) return invalid('answer')
+  return { respuesta: value.respuesta, fuente: value.fuente as AskResponse['fuente'] }
+}
+
+export function parseHabit(value: unknown): HabitStatus {
+  const states = ['pendiente', 'enviado', 'abierto', 'llamado', 'error']
+  if (!record(value) || typeof value.token !== 'string' || typeof value.vence !== 'string' ||
+      !states.includes(String(value.estado)) || typeof value.demo !== 'boolean') return invalid('reminder')
+  return value as unknown as HabitStatus
 }

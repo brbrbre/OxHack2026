@@ -1,11 +1,14 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import LandingPage from './pages/landing/LandingPage'
+import { hasPlanLink } from './lib/planLink'
 
 const Planner = lazy(() => import('./pages/planner/PlannerPage'))
 export type Page = 'home' | 'planner'
 
 export function pageFromSearch(search: string): Page {
-  return new URLSearchParams(search).get('view') === 'planner' ? 'planner' : 'home'
+  const query = new URLSearchParams(search)
+  if (query.has('view')) return query.get('view') === 'planner' ? 'planner' : 'home'
+  return hasPlanLink(search) ? 'planner' : 'home'
 }
 
 function currentPage(): Page {
@@ -39,7 +42,10 @@ export default function RootApp() {
     if (next === page) return
     const url = new URL(window.location.href)
     if (next === 'planner') url.searchParams.set('view', 'planner')
-    else url.searchParams.delete('view')
+    else {
+      url.searchParams.delete('view')
+      for (const key of ['simbolo', 'monto', 'plazo', 'perfil']) url.searchParams.delete(key)
+    }
     url.hash = ''
     window.history.pushState({ page: next }, '', url)
     window.scrollTo({ top: 0, behavior: 'instant' })

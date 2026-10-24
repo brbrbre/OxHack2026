@@ -19,6 +19,9 @@ describe('Horizon page navigation', () => {
     { search: '?view=unknown', page: 'home' },
     { search: '?view=', page: 'home' },
     { search: '?redirect=planner', page: 'home' },
+    { search: '?simbolo=WALMEX.MX&monto=500&plazo=180&perfil=conservador', page: 'planner' },
+    { search: '?simbolo=SPY&monto=0&plazo=30&perfil=moderado', page: 'home' },
+    { search: '?view=home&simbolo=SPY&monto=500&plazo=30&perfil=moderado', page: 'home' },
   ])('opens $page for $search', ({ search, page }) => {
     expect(pageFromSearch(search)).toBe(page)
   })

@@ -4,7 +4,7 @@ import type { FormEvent, MouseEvent } from 'react'
 import { ArrowDown, ArrowUpRight, BookOpen, ChevronRight, FlaskConical, Info, Sunrise } from 'lucide-react'
 import { api } from '../../api/client'
 import { assetTypesError, errorMessage, isAbortError } from '../../api/errors'
-import type { AssetsResponse, DecideResponse, PlanResponse, PricesResponse } from '../../api/types'
+import type { AssetsResponse, DecideResponse, PlanResponse, PricesResponse, SummaryResponse } from '../../api/types'
 import { DEFAULT_NOTICE, USE_MOCKS } from '../../config'
 import InvestmentForm from '../../components/InvestmentForm'
 import type { PlanDraft, PlannerMode } from '../../components/InvestmentForm'
@@ -15,7 +15,11 @@ import type { GuidedStep } from '../../components/GuidedPlanner'
 import DecisionCard from '../../components/DecisionCard'
 import PlanResult from '../../components/PlanResult'
 import ErrorMessage from '../../components/ErrorMessage'
+import SummaryBlock from '../../components/SummaryBlock'
+import AskPanel from '../../components/AskPanel'
+import RemindPanel from '../../components/RemindPanel'
 import { CurrencyProvider, useCurrency } from '../../currency/CurrencyContext'
+import { hasPlanLink, planFromSearch } from '../../lib/planLink'
 
 const PriceChart = lazy(() => import('../../components/PriceChart'))
 
@@ -34,7 +38,8 @@ function PlannerContent({ active = true, onHome }: PlannerPageProps) {
   const [assets, setAssets] = useState<AssetsResponse | null>(null)
   const [assetsError, setAssetsError] = useState<string | null>(null)
   const [assetsAttempt, setAssetsAttempt] = useState(0)
-  const [draft, setDraft] = useState<PlanDraft>(initialPlan)
+  const [draft, setDraft] = useState<PlanDraft>(() => planFromSearch(
+    typeof window === 'undefined' ? '' : window.location.search, initialPlan))
   const [mode, setMode] = useState<PlannerMode>('asset')
   const [prices, setPrices] = useState<PricesResponse | null>(null)
   const [pricesPending, setPricesPending] = useState(true)
@@ -46,11 +51,15 @@ function PlannerContent({ active = true, onHome }: PlannerPageProps) {
   const [decideError, setDecideError] = useState<string | null>(null)
   const [typesError, setTypesError] = useState<string | null>(null)
   const [hasOpenedResults, setHasOpenedResults] = useState(false)
-  const [experience, setExperience] = useState<Experience | null>(null)
+  const [experience, setExperience] = useState<Experience | null>(() =>
+    typeof window !== 'undefined' && hasPlanLink(window.location.search) ? 'quick' : null)
   const [guidedOpen, setGuidedOpen] = useState(false)
   const [guidedStep, setGuidedStep] = useState<GuidedStep>(0)
-  const hasChosenExperience = useRef(false)
+  const hasChosenExperience = useRef(experience !== null)
   const decisionController = useRef<AbortController | null>(null)
+  const [summary, setSummary] = useState<SummaryResponse | null>(null)
+  const [summaryPending, setSummaryPending] = useState(false)
+  const summaryController = useRef<AbortController | null>(null)
   const showWorkspace = hasOpenedResults && !guidedOpen && experience !== null
 
   useEffect(() => {
@@ -90,14 +99,19 @@ function PlannerContent({ active = true, onHome }: PlannerPageProps) {
     return () => controller.abort()
   }, [assets, draft.simbolo, pricesAttempt, mode, showWorkspace])
 
-  useEffect(() => () => decisionController.current?.abort(), [])
+  useEffect(() => () => {
+    decisionController.current?.abort()
+    summaryController.current?.abort()
+  }, [])
 
   useEffect(() => {
     if (!active || !showWorkspace || (!deciding && !result && !portfolio && !decideError)) return
     const heading = document.getElementById('outlook-heading')
     heading?.focus({ preventScroll: true })
-    if (window.matchMedia('(max-width: 760px)').matches) {
-      heading?.closest('.results-column')?.scrollIntoView({ behavior: 'instant', block: 'start' })
+    const section = heading?.closest('section')
+    const top = section?.getBoundingClientRect().top ?? 0
+    if (window.matchMedia('(max-width: 760px)').matches || top < 0 || top > window.innerHeight / 2) {
+      section?.scrollIntoView({ behavior: 'instant', block: 'start' })
     }
   }, [deciding, result, portfolio, decideError, showWorkspace, active])
 
@@ -111,6 +125,9 @@ function PlannerContent({ active = true, onHome }: PlannerPageProps) {
 
   const clearAnalysis = useCallback(() => {
     decisionController.current?.abort()
+    summaryController.current?.abort()
+    setSummary(null)
+    setSummaryPending(false)
     setResult(null)
     setPortfolio(null)
     setDecideError(null)
@@ -171,6 +188,9 @@ function PlannerContent({ active = true, onHome }: PlannerPageProps) {
     decisionController.current?.abort()
     const controller = new AbortController()
     decisionController.current = controller
+    summaryController.current?.abort()
+    setSummary(null)
+    setSummaryPending(false)
     setDeciding(true)
     setResult(null)
     setPortfolio(null)
@@ -179,18 +199,22 @@ function PlannerContent({ active = true, onHome }: PlannerPageProps) {
     try {
       const request = { monto: amount, plazo_dias: draft.plazo_dias, perfil: draft.perfil }
       if (mode === 'plan') {
-        const response = await api.plan({ ...request, tipos: draft.tipos }, controller.signal)
+        const body = { ...request, tipos: draft.tipos }
+        const response = await api.plan(body, controller.signal)
         if (!controller.signal.aborted) {
           setPortfolio(response)
           setHasOpenedResults(true)
           setGuidedOpen(false)
+          loadSummary('plan', body)
         }
       } else {
-        const response = await api.decide({ ...request, simbolo: draft.simbolo }, controller.signal)
+        const body = { ...request, simbolo: draft.simbolo }
+        const response = await api.decide(body, controller.signal)
         if (!controller.signal.aborted) {
           setResult(response)
           setHasOpenedResults(true)
           setGuidedOpen(false)
+          loadSummary('decide', body)
         }
       }
     } catch (error) {
@@ -202,6 +226,19 @@ function PlannerContent({ active = true, onHome }: PlannerPageProps) {
     } finally {
       if (!controller.signal.aborted) setDeciding(false)
     }
+  }
+
+  function loadSummary(kind: 'decide' | 'plan', body: Parameters<typeof api.summary>[1]) {
+    const controller = new AbortController()
+    summaryController.current = controller
+    setSummaryPending(true)
+    api.summary(kind, body, controller.signal).then((response) => {
+      if (!controller.signal.aborted) setSummary(response)
+    }).catch(() => {
+      if (!controller.signal.aborted) setSummary(null)
+    }).finally(() => {
+      if (!controller.signal.aborted) setSummaryPending(false)
+    })
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -273,6 +310,9 @@ function PlannerContent({ active = true, onHome }: PlannerPageProps) {
               ? <PlanResult result={portfolio} pending={deciding} error={decideError} onRetry={() => void analyze()} active={active} />
               : <DecisionCard result={result} pending={deciding} error={decideError}
                 onRetry={() => void analyze()} isDemo={USE_MOCKS} />}
+            {active && <SummaryBlock summary={summary} pending={summaryPending} />}
+            <AskPanel result={mode === 'asset' ? result : null} plan={mode === 'plan' ? portfolio : null} />
+            {mode === 'asset' && <RemindPanel result={result} />}
             <footer className="notice-bar">
               <Info size={15} aria-hidden="true" />
               <p>{(mode === 'plan' ? portfolio?.aviso : result?.aviso) ?? DEFAULT_NOTICE}</p>

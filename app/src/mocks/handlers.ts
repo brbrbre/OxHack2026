@@ -65,5 +65,15 @@ export async function mockRequest(path: string, init: RequestInit = {}, signal?:
     if (unknown.length) throw new ApiError('Unknown asset types: ' + unknown.join(', '), 400)
     return mockPlan(body)
   }
+  if (url.pathname.startsWith('/api/habit/')) {
+    throw new ApiError('Reminders need the live service.', 503)
+  }
+  if (url.pathname === '/api/ask' && init.method === 'POST') {
+    return { respuesta: 'Demo mode: the tutor answers with live data only.', fuente: 'offline' }
+  }
+  if (url.pathname.startsWith('/api/summary/') && init.method === 'POST') {
+    const body = JSON.parse(String(init.body)) as DecideRequest | PlanRequest
+    return { texto: 'Sample summary for a ' + body.plazo_dias + '-day plan. Demo data, not a real analysis.', fuente: 'template' }
+  }
   throw new ApiError('The requested resource was not found.', 404)
 }

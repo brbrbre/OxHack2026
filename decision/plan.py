@@ -111,18 +111,25 @@ def plan(monto: float, plazo_dias: int, perfil: str, grupos: dict[str, list[str]
     candidatos = {g: sorted([f for f in filas if f["grupo"] == g and f["decision"] == INVERTIR],
                             key=lambda f: -f["senal"]) for g in grupos}
     seleccion: list[dict] = []
+    # Por qué un activo que se puede invertir no entró a la cartera (la app lo muestra).
+    fuera: dict[str, str] = {}
 
-    def copia(f: dict) -> bool:
-        return any(_correlacion(precios[f["simbolo"]], precios[x["simbolo"]]) > CORRELACION_MAXIMA
-                   for x in seleccion)
+    def copia(f: dict) -> dict | None:
+        return next((x for x in seleccion
+                     if _correlacion(precios[f["simbolo"]], precios[x["simbolo"]]) > CORRELACION_MAXIMA), None)
 
     while len(seleccion) < MAX_ACTIVOS and any(candidatos.values()):
         for g in grupos:
             while candidatos[g] and len(seleccion) < MAX_ACTIVOS:
                 f = candidatos[g].pop(0)
-                if not copia(f):
+                gemelo = copia(f)
+                if gemelo is None:
                     seleccion.append(f)
                     break
+                fuera[f["simbolo"]] = f"Moves almost like {gemelo['nombre']}, which is already in the plan."
+    for resto in candidatos.values():
+        for f in resto:
+            fuera[f["simbolo"]] = f"The plan holds up to {MAX_ACTIVOS} assets."
 
     if seleccion:
         w = _pesos(seleccion)
@@ -141,6 +148,7 @@ def plan(monto: float, plazo_dias: int, perfil: str, grupos: dict[str, list[str]
 
     def lista(dec):
         return [{k: f[k] for k in ("simbolo", "nombre", "grupo", "razon", "fraccion")}
+                | ({"fuera_del_plan": fuera.get(f["simbolo"])} if dec == INVERTIR else {})
                 for f in filas if f["decision"] == dec]
 
     if cartera:

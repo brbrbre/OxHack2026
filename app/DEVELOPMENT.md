@@ -69,7 +69,19 @@ For a single-server deployment, set VITE_USE_MOCKS=false before running npm.cmd 
 
 API types retain the team's Spanish field names and enum values. UI labels are English; reasons, recommendations, event text, asset names and the notice are displayed as returned by the API.
 
-The current contract is api/README.md on main (reviewed at commit 7083e6d, including the investment plan and UK catalogue additions). API copy, catalogue names and catalogue groups arrive in English and are not translated by components. Decision and risk-profile display labels are centralized in src/lib/labels.ts; wire codes remain unchanged.
+The current contract is api/README.md on main (reviewed through commit 0ac032d, including optional summaries, tutor, audio and reminders). API copy, catalogue names and catalogue groups arrive in English and are not translated by components. Decision and risk-profile display labels are centralized in src/lib/labels.ts; wire codes remain unchanged.
+
+## Summaries, tutor and reminders
+
+The planner connects the team's optional /api/summary/decide and /api/summary/plan routes after a successful decision or portfolio request. Summary loading and failure do not replace the numerical result. Editing the plan cancels stale summary requests. SummaryBlock provides the existing Listen control, using /api/listen when available and browser speech as the fallback. Going home or changing the result stops playback, cancels pending audio and releases its temporary URL.
+
+Ask Horizon uses /api/ask with the original USD result context and the latest four conversation turns. It does not request an answer until the person submits a question or selects a suggestion. Written summary and tutor text remain verbatim; when another budget currency is selected, nearby notes identify their USD amounts. Currency changes do not start a new analysis or conversation.
+
+The single-asset reminder form uses the team's /api/habit routes and requires a number and explicit consent before submission. Its real delivery depends on the server configuration described in api/README.md. Frontend mock mode does not send messages or create reminders. Stale reminder requests and polling are cancelled when their result changes or the panel unmounts; returning home keeps the mounted planner's conversation and reminder state.
+
+Reminder redirects in the existing /r/{token} route use /?simbolo=...&monto=...&plazo=...&perfil=.... A complete valid query opens the planner directly with the quick form prefilled, using the canonical USD amount in the URL. It does not automatically run analysis. Regular visits retain the guided/quick choice. Going home clears the reminder parameters from that new history entry; Back still restores the original link.
+
+Plan candidates retain the API's fuera_del_plan explanation when an eligible asset was left out of the allocated portfolio. The Invest group identifies both candidate count and allocated count when they differ. The frontend does not change selection, weights or the Python allocation algorithm.
 
 The seven catalogue groups contain 21 assets, including VOD.L (Vodafone), HSBA.L (HSBC) and SHEL.L (Shell) in UK stocks. Try these presets with the form:
 

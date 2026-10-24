@@ -1,8 +1,8 @@
 import { USE_MOCKS } from '../config'
 import { ApiError } from './errors'
 import { fetchJson } from './http'
-import { parseAssets, parseDecision, parsePlan, parsePrices } from './validation'
-import type { DecideRequest, PlanRequest } from './types'
+import { parseAssets, parseDecision, parsePlan, parsePrices, parseSummary, parseAsk, parseHabit } from './validation'
+import type { AskRequest, DecideRequest, PlanRequest, RemindRequest } from './types'
 
 async function request(path: string, init: RequestInit = {}, signal?: AbortSignal): Promise<unknown> {
   if (USE_MOCKS) {
@@ -36,6 +36,54 @@ export const api = {
       throw new ApiError('The analysis did not match your plan. Please try again.')
     }
     return response
+  },
+
+  async summary(kind: 'decide' | 'plan', body: DecideRequest | PlanRequest, signal?: AbortSignal) {
+    return parseSummary(await request('/api/summary/' + kind, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }, signal))
+  },
+
+  /** MP3 from ElevenLabs, or null when the server has no audio (the app then uses the browser voice). */
+  async listen(texto: string, signal?: AbortSignal): Promise<Blob | null> {
+    if (USE_MOCKS) return null
+    try {
+      const response = await fetch('/api/listen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texto }),
+        signal,
+      })
+      return response.ok && response.headers.get('content-type')?.startsWith('audio/') ? await response.blob() : null
+    } catch {
+      return null
+    }
+  },
+
+  async ask(body: AskRequest, signal?: AbortSignal) {
+    return parseAsk(await request('/api/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }, signal))
+  },
+
+  async remind(body: RemindRequest, signal?: AbortSignal) {
+    return parseHabit(await request('/api/habit/remind', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }, signal))
+  },
+
+  async habitStatus(token: string, signal?: AbortSignal) {
+    return parseHabit(await request('/api/habit/' + encodeURIComponent(token), {}, signal))
+  },
+
+  async habitNow(token: string, signal?: AbortSignal) {
+    return parseHabit(await request('/api/habit/' + encodeURIComponent(token) + '/now', { method: 'POST' }, signal))
   },
 
   async plan(body: PlanRequest, signal?: AbortSignal) {

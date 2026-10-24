@@ -43,10 +43,16 @@ export function mockPlan(body: PlanRequest): PlanResponse {
       let candidate = queue.shift()
       while (candidate && ['SPY', 'VOO'].includes(candidate.simbolo) &&
              selected.some((asset) => ['SPY', 'VOO'].includes(asset.simbolo))) {
+        const twin = selected.find((asset) => ['SPY', 'VOO'].includes(asset.simbolo))
+        candidate.fuera_del_plan = 'Moves almost like ' + twin?.nombre + ', which is already in the plan.'
         candidate = queue.shift()
       }
       if (candidate) selected.push(candidate)
     }
+  }
+  for (const asset of invertir) {
+    if (selected.includes(asset)) asset.fuera_del_plan = null
+    else asset.fuera_del_plan ??= 'The plan holds up to 5 assets.'
   }
 
   const investedWeight = Math.min(illustrativeInvestment[body.perfil], selected.length * 0.4)

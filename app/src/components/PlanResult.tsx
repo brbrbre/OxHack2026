@@ -154,7 +154,8 @@ export default function PlanResult({ result, pending, error, onRetry, active = t
             {groups.map((group) => <section className={'plan-classification ' + group.className} key={group.code} aria-labelledby={group.id}>
               <h3 id={group.id}><span className={'decision-badge ' + group.className}>
                 <group.Icon size={15} strokeWidth={2} aria-hidden="true" />{DECISION_LABELS[group.code]}</span>
-                <span className="classification-count">{group.assets.length} {group.assets.length === 1 ? 'asset' : 'assets'}</span>
+                <span className="classification-count">{group.assets.length} {group.assets.length === 1 ? 'asset' : 'assets'}
+                  {group.code === 'INVERTIR' && group.assets.length !== assetCount ? ', ' + assetCount + ' in the plan' : ''}</span>
               </h3>
               {group.assets.length ? <ul className="plan-candidates">
                 {group.assets.map((asset) => <li key={asset.simbolo}>
@@ -162,6 +163,7 @@ export default function PlanResult({ result, pending, error, onRetry, active = t
                     <span className="asset-name-copy"><strong>{asset.nombre}</strong><span className="candidate-symbol">{asset.simbolo}</span></span>
                   </div>
                   <p>{asset.razon}</p>
+                  {asset.fuera_del_plan && <p className="candidate-note">Not in the plan: {asset.fuera_del_plan}</p>}
                 </li>)}
               </ul> : <p className="empty-classification">No assets in this group.</p>}
             </section>)}

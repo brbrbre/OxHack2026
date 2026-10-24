@@ -105,7 +105,7 @@ Respuesta (ejemplo real, baseline, 24 oct 2026, recortado):
     {"simbolo": "GLD", "nombre": "Gold", "grupo": "ETFs", "peso": 0.19, "monto": 950.0}
   ],
   "efectivo": 0.0,
-  "invertir": [{"simbolo": "SPY", "nombre": "S&P 500 (SPDR)", "grupo": "ETFs", "razon": "...", "fraccion": 1.0}],
+  "invertir": [{"simbolo": "SPY", "nombre": "S&P 500 (SPDR)", "grupo": "ETFs", "razon": "...", "fraccion": 1.0, "fuera_del_plan": null}],
   "esperar": [{"simbolo": "BTCUSDT", "nombre": "Bitcoin", "grupo": "Crypto", "razon": "In a bad scenario the full amount could lose $1,097 (-21.9%); your moderate profile accepts up to 10%.", "fraccion": 0.46}],
   "no_por_ahora": [{"simbolo": "ETHUSDT", "nombre": "Ethereum", "grupo": "Crypto", "razon": "The model sees a higher chance of losing than gaining over this period.", "fraccion": 0.0}],
   "resumen": "For 90 days with a moderate profile: $1,400 in S&P 500 (Vanguard), ... Keep $0 in cash. In a bad scenario the plan could lose about $321 (-6.4%); your profile accepts up to 10%.",
@@ -119,4 +119,29 @@ Respuesta (ejemplo real, baseline, 24 oct 2026, recortado):
 - `cartera` va ordenada de mayor a menor peso: hasta 5 activos, máximo 40 % en uno, sin dos activos que se muevan casi igual (como SPY y VOO).
 - `efectivo` es lo que no conviene invertir hoy. `invertido + efectivo = monto`.
 - `invertir`, `esperar` y `no_por_ahora` traen todos los activos de los tipos elegidos, cada uno con su razón.
+- Cada activo de `invertir` trae `fuera_del_plan`: `null` si está en la cartera, o el motivo si no entró (se mueve casi igual que otro ya elegido, o la cartera ya tiene 5).
 - Tipo desconocido: 400 con `{"error": "Unknown asset types: ..."}`.
+
+### Resumen, tutor y audio (Gemini y ElevenLabs)
+
+Solo redactan, explican o leen. Nunca deciden ni cambian un número. Las claves van en `.env` (`GEMINI_API_KEY`, `ELEVENLABS_API_KEY`); sin ellas todo sigue funcionando con textos locales.
+
+- `POST /api/summary/decide` (mismo cuerpo que `/api/decide`) y `POST /api/summary/plan` (mismo cuerpo que `/api/plan`) devuelven `{"texto": "...", "fuente": "gemini" | "template"}`. Si Gemini falla, tarda más de 8 s o su texto no trae el monto que calculó la regla, se usa la plantilla.
+- `POST /api/ask` con `{"pregunta": "...", "simbolo": "WALMEX.MX", "contexto": {...}, "historial": [{"pregunta": "...", "respuesta": "..."}]}` devuelve `{"respuesta": "...", "fuente": "gemini" | "local" | "offline"}`. `simbolo`, `contexto` e `historial` son opcionales (máximo 4 turnos, pregunta de hasta 300 caracteres). Sin Gemini contesta con la ficha del activo (`explain/fichas.py`) o con el glosario.
+- `POST /api/listen` con `{"texto": "..."}` devuelve `audio/mpeg`. Solo lee resúmenes que generó este servidor (400 si no); 503 si no hay audio, y la app usa la voz del navegador.
+
+Modelo de Gemini: `GEMINI_MODEL` (por defecto `gemini-flash-lite-latest`). Voz: `ELEVENLABS_VOICE_ID` y `ELEVENLABS_MODEL`.
+
+### Hábito: recordatorio por WhatsApp y llamada (`habito/`)
+
+La persona pide que le recordemos su plan. Al terminar el plazo, el servidor vuelve a calcular la respuesta de ese día; Gemini redacta el WhatsApp con esos números y un link personal. Si nadie abre el link en `HABITO_ESPERA_MIN` minutos, Twilio llama y reproduce un guion con la voz de ElevenLabs.
+
+- `POST /api/habit/remind` con `{"telefono": "+1...", "consentimiento": true, "simbolo", "monto", "plazo_dias", "perfil"}` guarda el recordatorio (vence en `plazo_dias`). 400 sin permiso o con formato malo; 403 si el número no está en `HABITO_PERMITIDOS` (la URL es pública: así nadie la usa para mandar spam).
+- `GET /api/habit/{token}` da el estado: `pendiente`, `enviado`, `abierto`, `llamado` o `error`.
+- `POST /api/habit/{token}/now` (solo con `HABITO_DEMO=1`) vence el recordatorio ya y lo manda.
+- `GET /r/{token}` es el link del WhatsApp: marca `abierto` y abre la app con el mismo plan.
+- `GET /api/habit/audio/{token}.mp3` es el audio que reproduce la llamada.
+
+Variables: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` (número para llamar), `TWILIO_WHATSAPP_FROM` (número del sandbox), `PUBLIC_URL`, `HABITO_PERMITIDOS` (por defecto `DEMO_PHONE`), `HABITO_ESPERA_MIN` (por defecto 1440), `HABITO_DEMO`, `HABITO_AUTO=1` (revisa recordatorios cada 20 s dentro del API). Los recordatorios viven en `data/cache/habito.sqlite`, fuera del repo, porque llevan teléfonos.
+
+Límites de la demo: el sandbox de WhatsApp de Twilio solo escribe a números que se unieron con "join ..."; la cuenta de prueba solo llama a números verificados y empieza con un aviso de "trial account". En uso real, un mensaje que abre la conversación necesita una plantilla aprobada por Meta.
