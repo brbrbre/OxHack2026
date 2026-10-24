@@ -1,29 +1,29 @@
-# model/ - el modelo a mano (Felipe y Brisma)
+# model/ - the hand-built model (Felipe and Brisma)
 
-Predicción escrita con NumPy y pandas, sin librerías de ML.
+Forecasting written with NumPy and pandas, without ML libraries.
 
-## Contrato con el resto del equipo
+## Contract with the rest of the team
 
 ```python
 predict(precios: pd.Series, plazo_dias: int) -> dict
 # {
-#   "rendimiento_esperado": float,   # para el plazo, ej. 0.012 = +1.2 %
-#   "volatilidad": float,            # desviación estándar del rendimiento en el plazo
-#   "prob_perdida": float,           # 0 a 1
-#   "intervalo": (float, float),     # rendimiento bajo y alto, ej. al 90 %
+#   "rendimiento_esperado": float,   # for the horizon, e.g. 0.012 = +1.2 %
+#   "volatilidad": float,            # standard deviation of the return over the horizon
+#   "prob_perdida": float,           # 0 to 1
+#   "intervalo": (float, float),     # low and high return, e.g. at 90 %
 # }
 ```
 
-`precios` son cierres diarios con fecha como índice. El contrato no cambia sin avisar a todos.
+`precios` are daily closes with the date as index. The contract does not change without telling everyone.
 
-## Cómo se conecta con la app
+## How it connects to the app
 
-Pongan la función en `model/predict.py` con `NOMBRE = "nombre-de-su-modelo"`. El API la usa sola en cuanto existe; mientras no, usa `api/baseline.py`.
-Opcional: si `predict` acepta `es_cripto: bool = False`, el API le avisa cuándo el activo cotiza 365 días al año en lugar de 252.
+Put the function in `model/predict.py` with `NOMBRE = "your-model-name"`. The API picks it up on its own as soon as it exists; until then it uses `api/baseline.py`.
+Optional: if `predict` accepts `es_cripto: bool = False`, the API tells it when the asset trades 365 days a year instead of 252.
 
-## Validación
+## Validation
 
-- En orden de tiempo, con ventanas que avanzan. Nunca mezclando fechas al azar.
-- Contra baselines: rendimiento cero, promedio histórico y volatilidad histórica simple.
+- In time order, with rolling windows. Never shuffling dates at random.
+- Against baselines: zero return, historical average and simple historical volatility.
 
-Listo cuando: `python -m model.evaluate SPY` imprime el error del modelo y del baseline.
+Done when: `python -m model.evaluate SPY` prints the error of the model and of the baseline.

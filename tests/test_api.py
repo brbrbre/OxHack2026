@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api import baseline, main
+from model import predict as modelo
 
 
 def _serie(drift: float, n: int = 1000) -> pd.Series:
@@ -42,7 +43,7 @@ def test_decide_shape(client):
     body = r.json()
     assert r.status_code == 200
     assert body["decision"] in {"INVERTIR", "ESPERAR", "NO_POR_AHORA"}
-    assert body["modelo"] == "baseline"
+    assert body["modelo"] == modelo.NOMBRE
     assert body["aviso"].startswith("Educational prototype")
     for k in ["monto", "plazo_dias", "perfil", "rendimiento_esperado", "volatilidad",
               "prob_perdida", "senal", "peor_caso", "mejor_caso", "eventos"]:
