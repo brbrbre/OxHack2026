@@ -26,6 +26,7 @@ from api import baseline
 from data.assets import ASSETS, all_symbols
 from data.fetch import get_close, is_crypto
 from decision.rules import decide
+from decision.signals import tendencia
 
 AVISO = "Educational prototype, not financial advice. Data: Yahoo Finance, Binance."
 APP_DIST = Path(__file__).resolve().parent.parent / "app" / "dist"
@@ -121,7 +122,8 @@ def decide_route(req: DecideRequest):
         pred, nombre_modelo = run_prediction(precios, req.plazo_dias, req.simbolo)
     except ValueError as e:
         raise HTTPException(400, str(e))
-    r = decide(pred, req.monto, req.plazo_dias, req.simbolo, hoy=date.today(), perfil=req.perfil)
+    r = decide(pred, req.monto, req.plazo_dias, req.simbolo, hoy=date.today(), perfil=req.perfil,
+               tendencia=tendencia(precios))
     numeros = {k: v for k, v in r["numeros"].items() if k != "simbolo"}
     return {
         "simbolo": req.simbolo,
