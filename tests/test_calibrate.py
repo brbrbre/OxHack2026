@@ -49,3 +49,32 @@ def test_devuelve_una_copia():
     s = _serie("SPY").iloc[:200]
     p(s, 30)["prob_perdida"] = 0.99
     assert p(s, 30)["prob_perdida"] == 0.4
+
+
+def _detalle(fraccion):
+    rng = np.random.default_rng(3)
+    filas = []
+    for s, vol in [("A", 0.02), ("B", 0.08)]:
+        for v in range(60):
+            r = float(rng.normal(0.005, vol))
+            filas.append({"ventana": v, "simbolo": s, "r_siempre": r})
+    d = pd.DataFrame(filas)
+    d["fraccion"] = fraccion(d)
+    d["r_app"] = d["fraccion"] * d["r_siempre"]
+    return d
+
+
+def test_sin_momento_la_app_empata_con_su_tamano():
+    from decision.calibrate import momento_vs_tamano
+    d = _detalle(lambda d: np.where(d["simbolo"] == "A", 0.9, 0.2))
+    m = momento_vs_tamano(d, 30, reps=200)
+    assert abs(m["sharpe_app"] - m["sharpe_tamano"]) < 1e-9
+    assert m["placebo"] == 1.0
+
+
+def test_momento_perfecto_le_gana_al_placebo():
+    from decision.calibrate import momento_vs_tamano
+    d = _detalle(lambda d: (d["r_siempre"] > 0).astype(float))
+    m = momento_vs_tamano(d, 30, reps=200)
+    assert m["sharpe_app"] > m["sharpe_tamano"]
+    assert m["placebo"] < 0.05

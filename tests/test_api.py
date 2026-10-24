@@ -18,6 +18,8 @@ def _serie(drift: float, n: int = 1000) -> pd.Series:
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setattr(main, "get_close", lambda s: _serie(0.001))
+    # Las pruebas del API fijan el baseline: no dependen de que model/predict.py exista.
+    monkeypatch.setattr(main, "load_model", lambda: (None, baseline.NOMBRE))
     return TestClient(main.app)
 
 
