@@ -65,6 +65,9 @@ export async function mockRequest(path: string, init: RequestInit = {}, signal?:
     if (unknown.length) throw new ApiError('Unknown asset types: ' + unknown.join(', '), 400)
     return mockPlan(body)
   }
+  if (url.pathname.startsWith('/api/habit/')) {
+    throw new ApiError('Reminders need the live service.', 503)
+  }
   if (url.pathname === '/api/ask' && init.method === 'POST') {
     return { respuesta: 'Demo mode: the tutor answers with live data only.', fuente: 'offline' }
   }

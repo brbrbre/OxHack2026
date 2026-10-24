@@ -131,3 +131,17 @@ Solo redactan, explican o leen. Nunca deciden ni cambian un número. Las claves 
 - `POST /api/listen` con `{"texto": "..."}` devuelve `audio/mpeg`. Solo lee resúmenes que generó este servidor (400 si no); 503 si no hay audio, y la app usa la voz del navegador.
 
 Modelo de Gemini: `GEMINI_MODEL` (por defecto `gemini-flash-lite-latest`). Voz: `ELEVENLABS_VOICE_ID` y `ELEVENLABS_MODEL`.
+
+### Hábito: recordatorio por WhatsApp y llamada (`habito/`)
+
+La persona pide que le recordemos su plan. Al terminar el plazo, el servidor vuelve a calcular la respuesta de ese día; Gemini redacta el WhatsApp con esos números y un link personal. Si nadie abre el link en `HABITO_ESPERA_MIN` minutos, Twilio llama y reproduce un guion con la voz de ElevenLabs.
+
+- `POST /api/habit/remind` con `{"telefono": "+1...", "consentimiento": true, "simbolo", "monto", "plazo_dias", "perfil"}` guarda el recordatorio (vence en `plazo_dias`). 400 sin permiso o con formato malo; 403 si el número no está en `HABITO_PERMITIDOS` (la URL es pública: así nadie la usa para mandar spam).
+- `GET /api/habit/{token}` da el estado: `pendiente`, `enviado`, `abierto`, `llamado` o `error`.
+- `POST /api/habit/{token}/now` (solo con `HABITO_DEMO=1`) vence el recordatorio ya y lo manda.
+- `GET /r/{token}` es el link del WhatsApp: marca `abierto` y abre la app con el mismo plan.
+- `GET /api/habit/audio/{token}.mp3` es el audio que reproduce la llamada.
+
+Variables: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` (número para llamar), `TWILIO_WHATSAPP_FROM` (número del sandbox), `PUBLIC_URL`, `HABITO_PERMITIDOS` (por defecto `DEMO_PHONE`), `HABITO_ESPERA_MIN` (por defecto 1440), `HABITO_DEMO`, `HABITO_AUTO=1` (revisa recordatorios cada 20 s dentro del API). Los recordatorios viven en `data/cache/habito.sqlite`, fuera del repo, porque llevan teléfonos.
+
+Límites de la demo: el sandbox de WhatsApp de Twilio solo escribe a números que se unieron con "join ..."; la cuenta de prueba solo llama a números verificados y empieza con un aviso de "trial account". En uso real, un mensaje que abre la conversación necesita una plantilla aprobada por Meta.

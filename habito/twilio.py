@@ -1,0 +1,37 @@
+"""Envío por Twilio: WhatsApp (sandbox) y llamada que reproduce un MP3. Usa la API REST con requests."""
+
+from __future__ import annotations
+
+import os
+from xml.sax.saxutils import escape
+
+import requests
+
+API = "https://api.twilio.com/2010-04-01/Accounts/{sid}/{recurso}.json"
+
+
+def configurado() -> bool:
+    return all(os.getenv(k) for k in ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN"))
+
+
+def _post(recurso: str, datos: dict) -> dict:
+    if not configurado():
+        raise RuntimeError("Twilio is not set up yet")
+    sid, clave = os.environ["TWILIO_ACCOUNT_SID"], os.environ["TWILIO_AUTH_TOKEN"]
+    r = requests.post(API.format(sid=sid, recurso=recurso), data=datos, auth=(sid, clave), timeout=20)
+    if r.status_code >= 300:
+        raise RuntimeError(f"Twilio {recurso} {r.status_code}: {r.text[:300]}")
+    return r.json()
+
+
+def whatsapp(telefono: str, texto: str) -> str:
+    """Manda un WhatsApp desde el número del sandbox. Devuelve el SID del mensaje."""
+    return _post("Messages", {"From": "whatsapp:" + os.environ["TWILIO_WHATSAPP_FROM"],
+                              "To": "whatsapp:" + telefono, "Body": texto})["sid"]
+
+
+def llamar(telefono: str, audio_url: str | None, texto: str) -> str:
+    """Llama y reproduce el MP3 de ElevenLabs; si no hay audio, Twilio lee el texto."""
+    cuerpo = f"<Play>{escape(audio_url)}</Play>" if audio_url else f"<Say>{escape(texto)}</Say>"
+    return _post("Calls", {"From": os.environ["TWILIO_FROM"], "To": telefono,
+                           "Twiml": f"<Response>{cuerpo}</Response>"})["sid"]

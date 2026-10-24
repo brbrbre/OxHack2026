@@ -390,3 +390,24 @@ h3 { font-size: 16px; font-weight: 600; line-height: 1.5; }
 .ask-send { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 16px; border: 0; border-radius: 6px; background: var(--accent); color: var(--surface); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
 .ask-send:disabled { background: var(--disabled-button); cursor: default; }
 .ask-note { margin-top: 10px; color: var(--ink-2); font-size: 13px; }
+
+/* Make it a habit: WhatsApp reminder and call */
+.remind-panel { margin-top: 20px; padding: 20px 24px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.remind-panel h3 { display: flex; align-items: center; gap: 8px; color: var(--ink); font-size: 16px; font-weight: 600; }
+.remind-intro { margin-top: 6px; color: var(--ink-2); font-size: 15px; line-height: 1.6; }
+.remind-form { display: grid; gap: 10px; margin-top: 14px; }
+.remind-form > label { color: var(--ink); font-size: 14px; font-weight: 600; }
+.remind-form input[type=tel] { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; }
+.remind-form input[type=tel]::placeholder { color: var(--ink-2); }
+.remind-consent { display: flex; gap: 10px; align-items: flex-start; color: var(--ink-2); font-size: 14px; line-height: 1.5; }
+.remind-consent input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--accent); }
+.remind-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 16px; border: 0; border-radius: 6px; background: var(--accent); color: var(--surface); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.remind-button.secondary { margin-top: 12px; border: 1px solid var(--accent); background: var(--surface); color: var(--accent); }
+.remind-button:disabled { background: var(--disabled-button); color: var(--surface); cursor: default; }
+.remind-button.secondary:disabled { border-color: var(--disabled-button); background: var(--surface); color: var(--disabled-button); }
+.remind-button:focus-visible, .remind-form input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.remind-status { margin-top: 12px; color: var(--ink); font-size: 15px; }
+.remind-steps { display: grid; gap: 8px; margin-top: 10px; padding: 0; list-style: none; }
+.remind-steps li { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 15px; }
+.remind-steps li.done { color: var(--ink); font-weight: 600; }
+.step-dot { width: 10px; height: 10px; margin: 0 3px; border: 2px solid var(--ink-2); border-radius: 50%; }

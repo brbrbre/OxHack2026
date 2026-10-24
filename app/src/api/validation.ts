@@ -1,5 +1,5 @@
 import { ApiError } from './errors'
-import type { AssetsResponse, DecideResponse, PlanAllocation, PlanAssetDecision, PlanResponse, PricesResponse, SummaryResponse, AskResponse } from './types'
+import type { AssetsResponse, DecideResponse, PlanAllocation, PlanAssetDecision, PlanResponse, PricesResponse, SummaryResponse, AskResponse, HabitStatus } from './types'
 
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -133,4 +133,11 @@ export function parseAsk(value: unknown): AskResponse {
   if (!record(value) || typeof value.respuesta !== 'string' || value.respuesta.trim() === '' ||
       !['gemini', 'local', 'offline'].includes(String(value.fuente))) return invalid('answer')
   return { respuesta: value.respuesta, fuente: value.fuente as AskResponse['fuente'] }
+}
+
+export function parseHabit(value: unknown): HabitStatus {
+  const states = ['pendiente', 'enviado', 'abierto', 'llamado', 'error']
+  if (!record(value) || typeof value.token !== 'string' || typeof value.vence !== 'string' ||
+      !states.includes(String(value.estado)) || typeof value.demo !== 'boolean') return invalid('reminder')
+  return value as unknown as HabitStatus
 }

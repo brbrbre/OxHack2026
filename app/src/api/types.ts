@@ -122,3 +122,26 @@ export interface AskResponse {
   respuesta: string
   fuente: 'gemini' | 'local' | 'offline'
 }
+
+export interface RemindRequest {
+  telefono: string
+  consentimiento: boolean
+  simbolo: string
+  monto: number
+  plazo_dias: number
+  perfil: RiskProfile
+}
+
+/** Reminder state: pendiente -> enviado (WhatsApp) -> abierto (link opened) or llamado (phone call). */
+export interface HabitStatus {
+  token: string
+  vence: string
+  estado: 'pendiente' | 'enviado' | 'abierto' | 'llamado' | 'error'
+  enviado_en: string | null
+  abierto_en: string | null
+  llamado_en: string | null
+  error: string | null
+  simbolo: string
+  plazo_dias: number
+  demo: boolean
+}
