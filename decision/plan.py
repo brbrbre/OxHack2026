@@ -43,20 +43,30 @@ def _razon_principal(r: dict) -> str:
 
 
 def _pesos(seleccion: list[dict]) -> list[float]:
-    """Peso ∝ 1/volatilidad, con tope por activo y renormalizado."""
+    """Peso ∝ 1/volatilidad, con tope por activo.
+
+    Reparto por llenado: los que llegan al tope se quedan fijos ahí y el
+    exceso se reparte solo entre los demás. Si hay menos de 3 activos, el
+    tope no deja llegar a 100 % y el resto queda en efectivo.
+    """
     inv = np.array([1 / max(s["volatilidad"], 1e-6) for s in seleccion])
-    w = inv / inv.sum()
-    for _ in range(10):
-        sobre = w > TOPE_POR_ACTIVO
+    w = np.zeros(len(inv))
+    fijos = np.zeros(len(inv), dtype=bool)
+    resto = 1.0
+    while True:
+        libres = ~fijos
+        if not libres.any() or resto <= 1e-12:
+            break
+        propuesta = resto * inv[libres] / inv[libres].sum()
+        sobre = propuesta > TOPE_POR_ACTIVO + 1e-12
         if not sobre.any():
+            w[libres] = propuesta
             break
-        exceso = (w[sobre] - TOPE_POR_ACTIVO).sum()
-        w[sobre] = TOPE_POR_ACTIVO
-        libres = ~sobre
-        if not libres.any():
-            break
-        w[libres] += exceso * w[libres] / w[libres].sum()
-    return list(w / w.sum()) if len(seleccion) * TOPE_POR_ACTIVO >= 1 else list(np.minimum(w, TOPE_POR_ACTIVO))
+        idx = np.flatnonzero(libres)[sobre]
+        w[idx] = TOPE_POR_ACTIVO
+        fijos[idx] = True
+        resto = 1.0 - w[fijos].sum()
+    return [float(x) for x in w]
 
 
 def _correlacion(a: pd.Series, b: pd.Series) -> float:
