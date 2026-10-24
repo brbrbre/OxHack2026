@@ -37,11 +37,15 @@ We also caught a bug in our own backtest. It mixed crypto and stock dates and sh
 
 ## Accomplishments that we're proud of
 
-Out of sample, conservative Horizon beat buy-and-hold at the same exposure. Sharpe was 1.08 against 0.98. Drawdown was 7.9% against 12.4%. Only 6% of random timings matched it.
+Out of sample, Horizon with XGBoost beat buy-and-hold at the same exposure in all three profiles. Conservative Sharpe was 1.15 against 0.98. Drawdown was 9.2% against 15.2%.
+
+We also checked where that gain comes from. Most of it is sizing: less money in volatile assets. Timing adds only +0.02 to +0.03 Sharpe.
 
 ## What we learned
 
-A forecast can be good at risk and useless at direction. Ours put 92% of outcomes inside its 90% range, but could not rank winners. Measuring both kept us honest.
+A forecast can be good at risk and weak at direction. XGBoost put 94% of outcomes inside its 90% range. Its rank correlation was only +0.02.
+
+A placebo can fool you too. Our first placebo only shuffled the portfolio's total exposure. Shuffling within each asset showed our baseline's "skill" was sizing, not timing.
 
 ## What's next
 
