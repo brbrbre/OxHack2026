@@ -5,6 +5,17 @@ Este contrato no cambia sin avisar a Carlos.
 
 Correr en local: `uvicorn api.main:app --reload --port 8000`
 
+## Qué modelo usa
+
+- Si existe `model/predict.py` con una función `predict(precios, plazo_dias)`, usa esa. Su nombre sale de la variable `NOMBRE` del mismo archivo.
+- Si la función acepta además `es_cripto=`, el API se lo pasa (`True` para BTCUSDT, ETHUSDT, SOLUSDT).
+- Si no existe, usa `api/baseline.py`: promedio y volatilidad de los últimos 3 años. Es también la referencia contra la que se compara el modelo.
+- La respuesta de `/api/decide` dice cuál usó en `"modelo"`.
+
+Si existe `app/dist` (la app de React compilada con `npm run build`), el API también la sirve en `/`. Así se publica un solo programa.
+
+Pruebas: `python -m pytest -q tests` (no usan internet).
+
 ## Rutas
 
 ### `GET /api/assets`
