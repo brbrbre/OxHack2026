@@ -12,6 +12,7 @@ from __future__ import annotations
 import importlib
 import inspect
 import json
+import threading
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Literal
@@ -31,6 +32,7 @@ from decision.plan import plan as armar_plan
 from decision.rules import decide
 from decision.signals import tendencia
 from explain import asesor, resumen, voz
+from tiger import db as tiger
 
 # Claves de los sponsors (GEMINI_API_KEY, ELEVENLABS_API_KEY, TIGER_DATABASE_URL) en .env, fuera del repo.
 load_dotenv()
@@ -132,6 +134,12 @@ def decide_route(req: DecideRequest):
     r = decide(pred, req.monto, req.plazo_dias, req.simbolo, hoy=date.today(), perfil=req.perfil,
                tendencia=tendencia(precios))
     numeros = {k: v for k, v in r["numeros"].items() if k != "simbolo"}
+    if tiger.url():
+        # Se guarda para calificarla cuando pase el plazo (python -m tiger.cargar --calificar).
+        fila = (tiger.en_utc(precios.index[-1]), req.simbolo, req.plazo_dias, nombre_modelo, "live", req.perfil,
+                float(pred["rendimiento_esperado"]), float(pred["intervalo"][0]), float(pred["intervalo"][1]),
+                float(pred["prob_perdida"]), float(numeros.get("fraccion", 0.0)), r["decision"], None)
+        threading.Thread(target=tiger.guardar_en_vivo, args=(fila,), daemon=True).start()
     return {
         "simbolo": req.simbolo,
         "nombre": _nombre(req.simbolo),

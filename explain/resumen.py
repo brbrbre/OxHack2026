@@ -11,8 +11,9 @@ from __future__ import annotations
 import json
 import os
 
-MODELO = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
-TIMEOUT_MS = 8000
+# flash-lite contesta en ~1 s; gemini-flash-latest estaba saturado (503) o tardaba más de 29 s (24 oct 2026).
+MODELO = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
+TIMEOUT_MS = 12000  # la API de Gemini rechaza plazos menores a 10 s
 LARGO_MAXIMO = 500
 
 # Textos que salieron de aquí: /api/listen solo lee estos, no texto libre.
