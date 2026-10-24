@@ -44,8 +44,27 @@ describe('investment amount presentation', () => {
     result.numeros.fraccion = 0.5
     result.numeros.monto_sugerido = 612.34
     const html = render(result)
-    expect(html).toContain('>Invest $612.34 now</h2>')
-    expect(html).toContain('keep $387.66 for later')
+    expect(html).toContain('>Invest $612 now</h2>')
+    expect(html).toContain('keep $388 for later')
+  })
+
+  it('rounds the headline to whole units without hiding a full or empty amount', () => {
+    const almostAll = structuredClone(decisionFixtures.waitRisk)
+    almostAll.numeros.fraccion = 0.9996
+    almostAll.numeros.monto_sugerido = 999.6
+    expect(render(almostAll)).toContain('>Invest the full $1,000 now</h2>')
+    expect(render(almostAll)).not.toContain('allocation-breakdown')
+
+    const cents = structuredClone(decisionFixtures.waitRisk)
+    cents.numeros.fraccion = 0.39338
+    cents.numeros.monto_sugerido = 393.38
+    expect(render(cents)).toContain('>Invest $393 now</h2>')
+    expect(render(cents)).toContain('keep $607 for later')
+
+    const tiny = structuredClone(decisionFixtures.waitRisk)
+    tiny.numeros.fraccion = 0.0004
+    tiny.numeros.monto_sugerido = 0.4
+    expect(render(tiny)).toContain('>Keep your $1,000 for now</h2>')
   })
 
   it('keeps the full budget when no investment is suggested', () => {

@@ -77,8 +77,12 @@ export default function App() {
     if (!deciding && !result && !portfolio && !decideError) return
     const heading = document.getElementById('outlook-heading')
     heading?.focus({ preventScroll: true })
-    if (window.matchMedia('(max-width: 760px)').matches) {
-      heading?.closest('section')?.scrollIntoView({ behavior: 'instant', block: 'start' })
+    const section = heading?.closest('section')
+    const top = section?.getBoundingClientRect().top ?? 0
+    // The answer must be on screen: always on phones, and on laptops when the
+    // person scrolled down to the button and the answer sits above the fold.
+    if (window.matchMedia('(max-width: 760px)').matches || top < 0 || top > window.innerHeight / 2) {
+      section?.scrollIntoView({ behavior: 'instant', block: 'start' })
     }
   }, [deciding, result, portfolio, decideError])
 

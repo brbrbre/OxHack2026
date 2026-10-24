@@ -106,3 +106,29 @@ def test_tope_nunca_se_pasa(vols):
 def test_dos_activos_dejan_efectivo():
     w = _pesos([{"volatilidad": 0.01}, {"volatilidad": 0.02}])
     assert w == [TOPE_POR_ACTIVO, TOPE_POR_ACTIVO]
+
+
+def test_dice_por_que_un_activo_invertible_no_entro():
+    gemelo = PRECIOS["A"] * 1.0001
+    precios = {**PRECIOS, "A2": gemelo}
+    preds = {**PREDS, "A2": PREDS["A"]}
+    r = plan(10_000, 30, "moderado", {"G1": ["A", "A2", "B"]}, precios, {"A": "Fondo A", "A2": "Fondo A2"},
+             lambda s, p: preds[s])
+    elegidos = {c["simbolo"] for c in r["cartera"]}
+    for x in r["invertir"]:
+        if x["simbolo"] in elegidos:
+            assert x["fuera_del_plan"] is None
+        else:
+            assert x["fuera_del_plan"].startswith("Moves almost like Fondo A")
+    assert all("fuera_del_plan" not in x for x in r["esperar"] + r["no_por_ahora"])
+
+
+def test_cartera_llena_lo_dice():
+    rng = np.random.default_rng(9)
+    idx = PRECIOS["A"].index
+    sims = [f"S{i}" for i in range(7)]
+    precios = {s: pd.Series(100 * np.exp(np.cumsum(rng.normal(0.0008, 0.01, len(idx)))), index=idx) for s in sims}
+    r = plan(10_000, 30, "moderado", {"G": sims}, precios, {}, lambda s, p: pred(0.01, 0.03, 0.4))
+    fuera = [x for x in r["invertir"] if x["fuera_del_plan"]]
+    assert len(r["cartera"]) == 5 and len(fuera) == 2
+    assert all(x["fuera_del_plan"] == "The plan holds up to 5 assets." for x in fuera)

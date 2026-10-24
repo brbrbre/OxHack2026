@@ -76,7 +76,8 @@ function planAsset(value: unknown): value is PlanAssetDecision {
   return record(value) && typeof value.simbolo === 'string' && value.simbolo.length > 0 &&
     typeof value.nombre === 'string' && value.nombre.length > 0 &&
     typeof value.grupo === 'string' && value.grupo.length > 0 &&
-    typeof value.razon === 'string' && fraction(value.fraccion)
+    typeof value.razon === 'string' && fraction(value.fraccion) &&
+    (value.fuera_del_plan === undefined || value.fuera_del_plan === null || typeof value.fuera_del_plan === 'string')
 }
 
 function allocation(value: unknown): value is PlanAllocation {

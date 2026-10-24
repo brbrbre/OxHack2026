@@ -251,6 +251,7 @@ h3 { font-size: 16px; font-weight: 600; line-height: 1.5; }
 .candidate-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 10px; }
 .candidate-symbol { color: var(--ink-2); font-size: 12px; overflow-wrap: anywhere; }
 .plan-candidates p { margin-top: 6px; color: var(--ink-2); font-size: 15px; line-height: 1.7; overflow-wrap: anywhere; }
+.plan-candidates .candidate-note { margin-top: 2px; color: var(--ink); font-size: 14px; }
 .plan-classification > p { margin-top: 12px; color: var(--ink-2); font-size: 15px; line-height: 1.7; }
 .plan-summary-copy { margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--line); }
 .plan-summary-copy p { margin-top: 10px; color: var(--ink-2); font-size: 15px; line-height: 1.8; overflow-wrap: anywhere; }

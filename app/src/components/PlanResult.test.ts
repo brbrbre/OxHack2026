@@ -60,6 +60,28 @@ describe('portfolio plan presentation', () => {
     }
   })
 
+  it('says why an investable asset is not in the plan', () => {
+    const result = structuredClone(planFixtures.sample)
+    const held = new Set(result.cartera.map((asset) => asset.simbolo))
+    const extra = { simbolo: 'XTRA', nombre: 'Extra fund', grupo: result.cartera[0].grupo, razon: 'Fits your profile.',
+      fraccion: 1, fuera_del_plan: 'Moves almost like ' + result.cartera[0].nombre + ', which is already in the plan.' }
+    result.invertir = [...result.invertir.map((asset) => ({ ...asset, fuera_del_plan: held.has(asset.simbolo) ? null : asset.fuera_del_plan })), extra]
+    const html = render(result)
+    expect(html).toContain('Not in the plan: ' + text(extra.fuera_del_plan))
+    const inPlan = result.invertir.filter((asset) => !asset.fuera_del_plan).length
+    expect(inPlan).toBe(result.cartera.length)
+    expect(html).toContain(result.invertir.length + ' assets, ' + result.cartera.length + ' in the plan')
+  })
+
+  it('leaves the count alone when every investable asset is in the plan', () => {
+    const result = structuredClone(planFixtures.sample)
+    const held = new Set(result.cartera.map((asset) => asset.simbolo))
+    result.invertir = result.invertir.filter((asset) => held.has(asset.simbolo)).map((asset) => ({ ...asset, fuera_del_plan: null }))
+    const html = render(result)
+    expect(html).not.toContain('in the plan</span>')
+    expect(html).not.toContain('Not in the plan')
+  })
+
   it('shows the summary exactly as supplied and explains the baseline', () => {
     const html = render(planFixtures.sample)
     expect(html).toContain('<p>' + text(planFixtures.sample.resumen) + '</p>')

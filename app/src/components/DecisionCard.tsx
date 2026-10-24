@@ -21,10 +21,13 @@ interface Props {
 export default function DecisionCard({ result, pending, error, onRetry }: Props) {
   const appearance = result ? appearances[result.decision] : null
   const numbers = result?.numeros
+  // Whole units in the headline, like the recommendations ("Invest about $393").
+  const budget = numbers ? Math.round(numbers.monto) : 0
+  const now = numbers ? Math.min(Math.round(numbers.monto_sugerido), budget) : 0
   const headline = numbers
-    ? numbers.fraccion === 0 ? 'Keep your ' + money(numbers.monto) + ' for now'
-      : numbers.fraccion === 1 ? 'Invest the full ' + money(numbers.monto_sugerido) + ' now'
-      : 'Invest ' + money(numbers.monto_sugerido) + ' now'
+    ? now <= 0 ? 'Keep your ' + money(numbers.monto) + ' for now'
+      : now >= budget ? 'Invest the full ' + money(numbers.monto) + ' now'
+      : 'Invest ' + money(now) + ' now'
     : ''
   return (
     <section className="panel outlook-panel"
@@ -51,9 +54,9 @@ export default function DecisionCard({ result, pending, error, onRetry }: Props)
               <h2 id="outlook-heading" className="suggested-amount" tabIndex={-1}>{headline}</h2>
               <span className={'decision-badge ' + appearance.className}>{DECISION_LABELS[result.decision]}</span>
             </div>
-            {numbers.fraccion > 0 && numbers.fraccion < 1 && <p className="allocation-breakdown">
+            {now > 0 && now < budget && <p className="allocation-breakdown">
               <span>of your {money(numbers.monto)}</span>
-              <span>keep {money(numbers.monto - numbers.monto_sugerido)} for later</span>
+              <span>keep {money(budget - now)} for later</span>
             </p>}
             <dl className="plan-summary">
               <div><dt>Asset</dt><dd>{result.simbolo}</dd></div>
