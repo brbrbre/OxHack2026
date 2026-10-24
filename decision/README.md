@@ -68,7 +68,8 @@ Resultado del 24 oct 2026, con el **baseline** (no con el modelo del equipo). Ca
 "Placebo" es la parte de los repartos al azar, con la misma exposición, que igualan o superan a la app. Cuanto más bajo, más habilidad real.
 
 Lo que dicen los números:
-- **Dimensionar por riesgo funciona.** En todos los perfiles la caída máxima baja a la mitad o menos. Con perfil conservador además sube el Sharpe, y ningún reparto al azar lo iguala.
+- **El pronóstico de riesgo sí tiene información, en el perfil conservador.** Ahí el Sharpe sube (1.06 contra 0.89 de misma exposición) y ningún reparto al azar lo iguala. Eso habla del riesgo, no de la dirección del precio.
+- **En moderado y agresivo, la caída menor viene de invertir menos.** Contra misma exposición la caída queda parecida (-15.9 % contra -21.6 % en moderado; -22.9 % contra -24.3 % en agresivo) y el Sharpe queda abajo.
 - **El filtro de expectativa no aporta con el baseline.** Fuera de muestra, el azar lo iguala (94-100 %). La diferencia de Sharpe contra misma exposición no es significativa: IC 90 % de -0.35 a +0.21 en moderado.
 - **El freno de tendencia no mejoró el entrenamiento** en ningún perfil. Queda apagado.
 - **Este es el marcador del modelo de Felipe y Brisma:** un buen modelo hace útil el filtro de expectativa. Se mide con `--modelo model`.
