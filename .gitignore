@@ -1,0 +1,23 @@
+# Claves: nunca al repo
+.env
+*.env
+!.env.example
+
+# Datos descargados (se regeneran con data/fetch)
+data/cache/
+*.parquet
+*.csv.gz
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Sistema
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

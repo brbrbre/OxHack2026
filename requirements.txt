@@ -1,0 +1,15 @@
+# Núcleo (modelo a mano: solo NumPy y pandas)
+numpy
+pandas
+# Datos
+yfinance
+requests
+# App
+streamlit
+# Sponsors
+psycopg[binary]
+google-genai
+elevenlabs
+python-dotenv
+# Pruebas
+pytest
