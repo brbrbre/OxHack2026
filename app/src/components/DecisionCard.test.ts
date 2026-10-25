@@ -17,6 +17,16 @@ function render(result: DecideResponse | null, options: { pending?: boolean; err
 }
 
 describe('investment amount presentation', () => {
+  it('keeps the API asset name and symbol together beside its decorative identity mark', () => {
+    const result = { ...decisionFixtures.invest, nombre: 'API supplied asset name' }
+    const html = render(result)
+    const summary = html.split('<dl class="plan-summary">')[1].split('</dl>')[0]
+    expect(summary).toContain('API supplied asset name')
+    expect(summary).toContain('SPY')
+    expect(summary).toContain('asset-name-row')
+    expect(summary).toContain('aria-hidden="true"')
+  })
+
   it('leads with the full suggested amount and keeps the decision in a separate badge', () => {
     const html = render(decisionFixtures.invest)
     expect(html).toContain('class="suggested-amount" tabindex="-1">Invest the full $1,000 now</h2>')
@@ -110,7 +120,7 @@ describe('investment amount presentation', () => {
   })
 
   it.each([
-    { result: null, options: {}, title: 'Choose an asset to get started.' },
+    { result: null, options: {}, title: 'Ready to check your next plan?' },
     { result: null, options: { pending: true }, title: 'Checking…' },
     { result: null, options: { error: 'Service unavailable.' }, title: 'We couldn&#x27;t get your answer.' },
     { result: decisionFixtures.invest, options: {}, title: 'Invest the full $1,000 now' },

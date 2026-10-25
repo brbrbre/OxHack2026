@@ -4,6 +4,7 @@ import type { DecideResponse, PricesResponse } from '../api/types'
 import { dateLabel, percentage } from '../lib/format'
 import { buildPriceSeries } from '../lib/forecast'
 import { formatQuotePrice, formatQuoteTick, quoteForSymbol } from '../lib/quote'
+import AssetLogo from './AssetLogo'
 import ErrorMessage from './ErrorMessage'
 
 interface Props {
@@ -28,7 +29,7 @@ export default function PriceChart({ prices, symbol, name, pending, error, onRet
   return (
     <section className="chart-panel" aria-labelledby="chart-heading" aria-busy={pending}>
       <div className="chart-title-row">
-        <div><h2 id="chart-heading">{name}</h2>
+        <div><h2 id="chart-heading" className="asset-name-row"><AssetLogo symbol={symbol} /><span>{name}</span></h2>
           <dl className="chart-meta">
             <div><dt>Symbol</dt><dd>{symbol}</dd></div>
             <div><dt>Period</dt><dd>{forecast ? 'Past year + forecast' : 'Past year'}</dd></div>
