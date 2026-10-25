@@ -1,4 +1,4 @@
-"""Pruebas de la regla de decisión. No usan internet ni el modelo real."""
+"""Decision rule tests. No internet and no real model needed."""
 
 from datetime import date
 
@@ -11,7 +11,7 @@ from decision.signals import tendencia
 
 BUENA = {"rendimiento_esperado": 0.02, "volatilidad": 0.04, "prob_perdida": 0.31, "intervalo": (-0.045, 0.085)}
 RIESGOSA = {"rendimiento_esperado": 0.03, "volatilidad": 0.15, "prob_perdida": 0.42, "intervalo": (-0.22, 0.28)}
-NOVIEMBRE = date(2026, 11, 2)  # sin eventos en los 3 días siguientes
+NOVIEMBRE = date(2026, 11, 2)  # no events in the following 3 days
 
 
 def frac(r):

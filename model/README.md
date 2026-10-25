@@ -1,66 +1,53 @@
-# model/ - modelos de predicción (Brisma y Felipe)
+# model/ - prediction models (Brisma and Felipe)
 
-## Qué modelo usa la app
+## Which model the app uses
 
-- **Principal: tendencia + TDA de Brisma** (`predict_tda.py`, NOMBRE `tendencia-tda`). Momentum de 1, 3, 6 y 12 meses, más la homología persistente H0 de un embedding de Takens de los últimos 63 rendimientos, con colas empíricas. Se entrena en `modelo_regresion_tda.ipynb`; la app usa `params_tda.json` (entrenado con toda la historia).
-- **Respaldo: XGBoost de Felipe** (`predict_xgboost.py`). Se activa con `MODELO=xgboost`.
-- `predict.py` solo elige entre los dos.
+- **Main: Trend + TDA, by Brisma** (`predict_tda.py`, name `tendencia-tda`). Momentum over 1, 3, 6 and 12 months, plus the H0 persistent homology of a Takens embedding of the last 63 returns, with empirical tails. Trained in `modelo_regresion_tda.ipynb`; the app uses `params_tda.json` (trained on all history).
+- **Backup: XGBoost, by Felipe** (`predict_xgboost.py`). Switch to it with `MODELO=xgboost`.
+- `predict.py` only picks between the two.
 
-Para medir sin ver el futuro se usa `params_tda_hasta_2021.json`, entrenado con el mismo notebook hasta nov 2021 (`python -m model.entrenar_tda_corte`):
+To measure without seeing the future, use `params_tda_hasta_2021.json`, trained with the same notebook up to November 2021 (`python -m model.entrenar_tda_corte`):
 
 ```bash
 TDA_PARAMS=model/params_tda_hasta_2021.json python -m decision.evaluate_forecasts --desde 2022-01-01 --modelo model
 TDA_PARAMS=model/params_tda_hasta_2021.json python -m decision.calibrate --modelo model --perfil moderado
 ```
 
-Con `params_tda.json` esos números quedarían dentro de la muestra: no se reportan. El walk-forward 2019-hoy de calibrate tampoco, porque 2019-2021 cae dentro del entrenamiento.
+With `params_tda.json` those numbers would be in sample, so we don't report them. Nor do we report the 2019-2021 part of the walk-forward for Trend + TDA, since it falls inside its training data.
 
-## Contrato con el resto del equipo
+## Contract with the rest of the code
 
 ```python
 predict(precios: pd.Series, plazo_dias: int) -> dict
 # {
-#   "rendimiento_esperado": float,   # para el plazo, ej. 0.012 = +1.2 %
-#   "volatilidad": float,            # desviación estándar del rendimiento en el plazo
-#   "prob_perdida": float,           # 0 a 1
-#   "intervalo": (float, float),     # rendimiento bajo y alto, ej. al 90 %
+#   "rendimiento_esperado": float,   # expected return over the horizon, e.g. 0.012 = +1.2%
+#   "volatilidad": float,            # standard deviation of the return over the horizon
+#   "prob_perdida": float,           # chance of loss, 0 to 1
+#   "intervalo": (float, float),     # low and high return of the 90% interval
 # }
 ```
 
-`precios` son cierres diarios con fecha como índice. El contrato no cambia sin avisar a todos.
+`precios` are daily closes indexed by date.
+Optional: if `predict` accepts `es_cripto: bool = False`, the API tells it when the asset trades 365 days a year instead of 252.
 
-## Cómo se conecta con la app
+## Validation rules
 
-Pongan la función en `model/predict.py` con `NOMBRE = "nombre-de-su-modelo"`. El API la usa sola en cuanto existe; mientras no, usa `api/baseline.py`.
-Opcional: si `predict` acepta `es_cripto: bool = False`, el API le avisa cuándo el activo cotiza 365 días al año en lugar de 252.
+- Time order with moving windows. Never shuffle dates.
+- Compare against baselines: zero return, historical mean and simple historical volatility.
+- Only use the prices passed in. `predict` gets `precios` already cut at the decision date. Never read `data/cache` or call `data.fetch` inside it: that leaks the future into the backtest.
+- With labels like "return over the next `h` days", drop the last `h` rows when training; they have no label yet.
+- Fix `random_state` so results repeat.
 
-## Validación
+`tests/test_model_contract.py` checks the contract: `python -m pytest -q tests/test_model_contract.py`.
 
-- En orden de tiempo, con ventanas que avanzan. Nunca mezclando fechas al azar.
-- Contra baselines: rendimiento cero, promedio histórico y volatilidad histórica simple.
+## Notebooks (Brisma)
 
-Listo cuando: `python -m model.evaluate SPY` imprime el error del modelo y del baseline.
+- `modelo_regresion_tda.ipynb`: trains Trend + TDA and writes `params_tda.json`. This is the one the app depends on.
+- `modelo_retorno_riesgo.ipynb`, `modelo_clasificacion.ipynb` and `modelo_completo (1).ipynb`: earlier models Brisma compared before choosing Trend + TDA (return and risk regression, a loss classifier, and the combined run). Their out-of-sample metrics are in `notebooks/outputs/`.
+- `entrenar_tda_corte.py`: re-trains Trend + TDA with data up to November 2021 for the honest test.
 
-## Si usan XGBoost (o cualquier modelo de ML)
+## Results
 
-1. **Solo con los precios que reciben.** `predict` entrena y predice con `precios`, que ya viene cortado en la fecha de decisión. Nunca lean `data/cache` ni llamen a `data.fetch` adentro: eso mete el futuro en el backtest.
-2. **Cuidado con las etiquetas.** Si la etiqueta es el rendimiento de los siguientes `h` días, las últimas `h` filas no tienen etiqueta todavía. Se descartan para entrenar; si no, el modelo ve el futuro.
-3. **Variables solo del pasado:** rendimientos de 1, 3, 6 y 12 meses (la evidencia de tendencia está en ese rango), volatilidad reciente (EWMA), distancia a máximos, etc.
-4. **Cómo sacar lo que pide el contrato:**
-   - `intervalo`: regresión por cuantiles con `objective="reg:quantileerror"` y `quantile_alpha=[0.05, 0.5, 0.95]`. Probado en la Mac de Rocco con XGBoost 3.4.1.
-   - `rendimiento_esperado`: la mediana (cuantil 0.5) o una regresión normal.
-   - `prob_perdida`: un `XGBClassifier` con etiqueta "rendimiento < 0", o la proporción de cuantiles bajo cero.
-   - `volatilidad`: `(q95 - q05) / 3.29`.
-5. **Rápido:** el backtest llama a `predict` unas 1,200 veces. Con `n_estimators` de 100-200 y `max_depth` 3 debería tardar menos de 1 s por llamada.
-6. **Determinista:** fijen `random_state`.
+Out of sample (trained to 2021, tested 2022 to today), Trend + TDA is the only one of the three models that beats the naive chance of loss, and its 90% range caught 90% of real outcomes. Full tables: root `README.md` and `decision/README.md`.
 
-`tests/test_model_contract.py` revisa todo esto en cuanto exista `model/predict.py`: `python -m pytest -q tests/test_model_contract.py`.
-
-Para saber si su modelo sirve:
-
-```bash
-python -m decision.evaluate_forecasts --desde 2022-01-01 --modelo model   # meta: skill > 0, IC > 0, cobertura ~90 %
-python -m decision.calibrate --modelo model                               # ¿le gana a la misma exposición?
-```
-
-Mac sin Homebrew: si `import xgboost` falla por `libomp.dylib`, corran `sh scripts/mac_xgboost_openmp.sh`.
+Mac without Homebrew: if `import xgboost` fails on `libomp.dylib`, run `sh scripts/mac_xgboost_openmp.sh`.

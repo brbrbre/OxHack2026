@@ -1,20 +1,20 @@
-# Núcleo
+# Core
 numpy
 pandas
-# Modelo del equipo (en Mac sin Homebrew: sh scripts/mac_xgboost_openmp.sh)
+# Models (on a Mac without Homebrew: sh scripts/mac_xgboost_openmp.sh)
 xgboost
 scikit-learn
-# Datos
+# Data
 yfinance
 requests
 # API
 fastapi
 uvicorn
-# Sponsors
+# Sponsors (Tiger Data, Gemini, ElevenLabs)
 psycopg[binary]
 google-genai
 elevenlabs
 python-dotenv
-# Pruebas
+# Tests
 pytest
 httpx

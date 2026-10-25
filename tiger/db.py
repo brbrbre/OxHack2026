@@ -1,4 +1,4 @@
-"""Conexión a Tiger Data. Todo es opcional: sin TIGER_DATABASE_URL, la app funciona igual."""
+"""Tiger Data connection. All optional: without TIGER_DATABASE_URL the app works the same."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ ESQUEMA = Path(__file__).with_name("esquema.sql")
 
 
 def en_utc(t):
-    """Fecha como timestamp con zona UTC, venga con zona o sin ella."""
+    """Date as a UTC timestamp, with or without a time zone."""
     import pandas as pd
 
     t = pd.Timestamp(t)
@@ -37,7 +37,7 @@ COLUMNAS_PRED = ("time", "simbolo", "plazo_dias", "modelo", "origen", "perfil", 
 
 
 def guardar_predicciones(conn, filas: list[tuple]) -> int:
-    """Inserta o actualiza predicciones (misma llave = misma predicción)."""
+    """Inserts or updates predictions (same key = same prediction)."""
     if not filas:
         return 0
     cols = ", ".join(COLUMNAS_PRED)
@@ -55,7 +55,7 @@ def guardar_predicciones(conn, filas: list[tuple]) -> int:
 
 
 def guardar_en_vivo(fila: tuple) -> None:
-    """Guarda una predicción de la app. Si Tiger falla, la respuesta al usuario no cambia."""
+    """Stores one app prediction. If Tiger fails, the user's answer doesn't change."""
     if not url():
         return
     try:

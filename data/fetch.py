@@ -1,16 +1,16 @@
-"""Precios diarios de acciones, ETFs, índices, FX y cripto, con caché en disco.
+"""Daily prices of stocks, ETFs, indices, FX and crypto, with a disk cache.
 
-Uso desde código:
+From code:
     from data.fetch import get_prices, get_close
-    precios = get_close("SPY")          # pd.Series de cierres diarios, índice = fecha
+    precios = get_close("SPY")          # pd.Series of daily closes, indexed by date
 
-Uso desde terminal (baja, guarda y lee de vuelta):
+From the terminal (downloads, stores and reads back):
     python -m data.fetch SPY BTCUSDT WALMEX.MX
 
-Fuentes:
-    - Yahoo Finance vía yfinance (sin clave): acciones, ETFs, índices, FX.
-      Cierres ajustados por dividendos y splits (auto_adjust=True).
-    - Binance REST (sin clave): pares cripto como BTCUSDT.
+Sources:
+    - Yahoo Finance through yfinance (no key): stocks, ETFs, indices, FX.
+      Closes adjusted for dividends and splits (auto_adjust=True).
+    - Binance REST (no key): crypto pairs such as BTCUSDT.
 """
 
 from __future__ import annotations
@@ -29,12 +29,12 @@ COLUMNS = ["open", "high", "low", "close", "volume"]
 BINANCE_HOSTS = ("https://api.binance.com", "https://data-api.binance.vision")
 BINANCE_QUOTES = ("USDT", "USDC", "FDUSD")
 BINANCE_LIMIT = 1000
-# 2017-01-01 en milisegundos: Binance no tiene datos antes de agosto de 2017.
+# 2017-01-01 in milliseconds: Binance has no data before August 2017.
 BINANCE_START_MS = 1483228800000
 
 
 def is_crypto(symbol: str) -> bool:
-    """BTCUSDT, ETHUSDC... van a Binance. Todo lo demás, a Yahoo."""
+    """BTCUSDT, ETHUSDC... go to Binance. Everything else, to Yahoo."""
     s = symbol.upper()
     return s.isalnum() and any(s.endswith(q) and len(s) > len(q) for q in BINANCE_QUOTES)
 
@@ -47,11 +47,11 @@ def cache_path(symbol: str) -> Path:
 # --- Binance -----------------------------------------------------------------
 
 def parse_binance_klines(rows: list[list]) -> pd.DataFrame:
-    """Convierte la respuesta de /api/v3/klines en el formato común.
+    """Converts the /api/v3/klines response into the common format.
 
-    Ojo: la API REST da la hora en MILIsegundos. Los archivos masivos de
-    data.binance.vision de 2026 la dan en MICROsegundos. Esta función es
-    solo para la API.
+    Careful: the REST API gives time in MILLIseconds. The 2026 bulk files on
+    data.binance.vision give it in MICROseconds. This function is for the
+    API only.
     """
     if not rows:
         return pd.DataFrame(columns=COLUMNS, index=pd.DatetimeIndex([], name="date"))
@@ -62,7 +62,7 @@ def parse_binance_klines(rows: list[list]) -> pd.DataFrame:
 
 
 def fetch_binance(symbol: str, start_ms: int = BINANCE_START_MS) -> pd.DataFrame:
-    """Todas las velas diarias desde start_ms, de 1000 en 1000."""
+    """All daily candles since start_ms, 1,000 at a time."""
     last_error = None
     for host in BINANCE_HOSTS:
         try:
@@ -87,7 +87,7 @@ def fetch_binance(symbol: str, start_ms: int = BINANCE_START_MS) -> pd.DataFrame
             return df[~df.index.duplicated(keep="last")].sort_index()
         except requests.RequestException as e:
             last_error = e
-    raise RuntimeError(f"Binance no respondió para {symbol}: {last_error}")
+    raise RuntimeError(f"Binance did not respond for {symbol}: {last_error}")
 
 
 # --- Yahoo -------------------------------------------------------------------
@@ -100,10 +100,10 @@ def _tidy_yahoo(raw: pd.DataFrame) -> pd.DataFrame:
 
 
 def fetch_yahoo(symbols: list[str]) -> dict[str, pd.DataFrame]:
-    """Una sola llamada por lote: Yahoo bloquea (429) si se le pide uno por uno."""
+    """One call per batch: Yahoo blocks (429) if asked one by one."""
     import yfinance as yf
 
-    # yfinance imprime avisos de pandas que no afectan los datos.
+    # yfinance prints pandas warnings that don't affect the data.
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         raw = yf.download(symbols, period="max", interval="1d", auto_adjust=True,
@@ -124,7 +124,7 @@ def fetch_yahoo(symbols: list[str]) -> dict[str, pd.DataFrame]:
     return out
 
 
-# --- Caché y API pública -----------------------------------------------------
+# --- Cache and public API ----------------------------------------------------
 
 def save(symbol: str, df: pd.DataFrame) -> Path:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -142,7 +142,7 @@ def load(symbol: str) -> pd.DataFrame | None:
 
 
 def fetch_many(symbols: list[str]) -> dict[str, pd.DataFrame]:
-    """Baja todos los símbolos (Yahoo en un lote, cripto uno por uno) y los guarda."""
+    """Downloads every symbol (Yahoo in one batch, crypto one by one) and stores them."""
     crypto = [s for s in symbols if is_crypto(s)]
     stocks = [s for s in symbols if not is_crypto(s)]
     result = fetch_yahoo(stocks) if stocks else {}
@@ -154,19 +154,19 @@ def fetch_many(symbols: list[str]) -> dict[str, pd.DataFrame]:
 
 
 def get_prices(symbol: str, refresh: bool = False) -> pd.DataFrame:
-    """Velas diarias del símbolo. Lee la caché; solo baja si no existe o refresh=True."""
+    """Daily candles for the symbol. Reads the cache; downloads only if missing or refresh=True."""
     if not refresh:
         cached = load(symbol)
         if cached is not None and not cached.empty:
             return cached
     data = fetch_many([symbol])
     if symbol not in data:
-        raise ValueError(f"Sin datos para {symbol}. ¿Está bien escrito el símbolo?")
+        raise ValueError(f"No data for {symbol}. Is the symbol spelled right?")
     return data[symbol]
 
 
 def get_close(symbol: str, refresh: bool = False) -> pd.Series:
-    """Cierres diarios: lo que recibe model.predict()."""
+    """Daily closes: what model.predict() receives."""
     return get_prices(symbol, refresh=refresh)["close"].rename(symbol)
 
 
@@ -178,18 +178,18 @@ def main(argv: list[str]) -> int:
     ok = True
     for s in symbols:
         if s not in fetched:
-            print(f"{s:<12} SIN DATOS")
+            print(f"{s:<12} NO DATA")
             ok = False
             continue
         back = load(s)
         if back is None:
-            print(f"{s:<12} NO SE PUDO LEER LA CACHÉ")
+            print(f"{s:<12} COULD NOT READ THE CACHE")
             ok = False
             continue
         same = len(back) == len(fetched[s])
         ok &= same
-        print(f"{s:<12} {len(back):>6} filas  {back.index.min().date()} a {back.index.max().date()}"
-              f"  último cierre {back['close'].iloc[-1]:,.2f}  caché {'OK' if same else 'DIFERENTE'}")
+        print(f"{s:<12} {len(back):>6} rows  {back.index.min().date()} to {back.index.max().date()}"
+              f"  last close {back['close'].iloc[-1]:,.2f}  cache {'OK' if same else 'DIFFERENT'}")
     return 0 if ok else 1
 
 

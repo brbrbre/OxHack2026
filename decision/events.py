@@ -1,14 +1,14 @@
-"""Calendario de decisiones de bancos centrales que pueden mover el precio.
+"""Calendar of central bank decisions that can move prices.
 
-Fechas tomadas de las páginas oficiales el 24 oct 2026:
+Dates taken from the official pages on 24 October 2026:
 - Fed (FOMC): https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm
-- BCE: https://www.ecb.europa.eu/press/calendars/mgcgc/html/index.en.html
-- Banco de Inglaterra: https://www.bankofengland.co.uk/news/2024/december/mpc-dates-for-2026
+- ECB: https://www.ecb.europa.eu/press/calendars/mgcgc/html/index.en.html
+- Bank of England: https://www.bankofengland.co.uk/news/2024/december/mpc-dates-for-2026
 
-Falta Banxico: no se encontraron sus fechas de nov-dic 2026. Revisar a mano
-en banxico.org.mx antes de agregarlo.
+Banxico is missing: its November-December 2026 dates were not found. Check
+banxico.org.mx by hand before adding it.
 
-"date" es el día del anuncio (el último día de la reunión).
+"date" is the announcement day (the last day of the meeting).
 """
 
 from __future__ import annotations
@@ -28,11 +28,11 @@ UK_SYMBOLS = ("^FTSE", "GBPUSD=X")
 
 
 def regions_for(symbol: str) -> set[str]:
-    """Qué bancos centrales mueven a este activo.
+    """Which central banks move this asset.
 
-    La Fed mueve a casi todo (dólar, acciones globales, cripto). El Banco de
-    Inglaterra, a lo británico. El BCE, a activos en euros (hoy ninguno del
-    catálogo).
+    The Fed moves almost everything (dollar, global stocks, crypto). The Bank of
+    England moves UK assets. The ECB moves euro assets (none in the catalogue
+    today).
     """
     s = symbol.upper()
     regions = {"US"}
@@ -44,7 +44,7 @@ def regions_for(symbol: str) -> set[str]:
 
 
 def upcoming(symbol: str, today: date, within_days: int) -> list[dict]:
-    """Eventos que afectan al activo entre hoy y hoy + within_days."""
+    """Events that affect the asset between today and today + within_days."""
     regions = regions_for(symbol)
     return [
         e for e in EVENTS

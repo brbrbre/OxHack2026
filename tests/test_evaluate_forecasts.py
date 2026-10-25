@@ -1,4 +1,4 @@
-"""Pruebas del evaluador de pronósticos. No usan internet."""
+"""Forecast evaluator tests. No internet needed."""
 
 import pandas as pd
 

@@ -1,4 +1,4 @@
-"""Hábito: recordatorio, WhatsApp y llamada. Sin red: Twilio, Gemini y ElevenLabs van simulados."""
+"""Make it a habit: reminder, WhatsApp and call. No network: Twilio, Gemini and ElevenLabs are simulated."""
 
 from datetime import datetime, timedelta, timezone
 
@@ -20,7 +20,7 @@ def _rec(conn, decision="ESPERAR", plazo=180):
 
 
 class Enviar:
-    """Twilio simulado: devuelve SIDs y contesta el estado que diga la prueba."""
+    """Simulated Twilio: returns SIDs and reports whatever status the test sets."""
 
     def __init__(self, falla=False, llamada="queued", mensaje="sent"):
         self.wa, self.llamadas, self.falla = [], [], falla
@@ -105,7 +105,7 @@ def test_si_abre_mientras_se_prepara_la_llamada_no_llama(conn, monkeypatch):
     almacen.actualizar(conn, rec["token"], estado="enviado", enviado_en=almacen.iso(T0))
     env = Enviar()
 
-    class VozQueAbre:  # mientras ElevenLabs genera el audio, la persona abre el link
+    class VozQueAbre:  # while ElevenLabs generates the audio, the person opens the link
         def audio(self, texto):
             almacen.actualizar(conn, rec["token"], abierto_en=almacen.iso(T0))
             return b"ID3"
@@ -185,7 +185,7 @@ def test_estado_del_whatsapp(conn):
     assert almacen.obtener(conn, rec["token"])["mensaje_estado"] == "queued"
     ciclo.procesar(conn, vence, lambda r: _hoy(), enviar=env)
     assert almacen.obtener(conn, rec["token"])["mensaje_estado"] == "undelivered"
-    env.estado_del_mensaje = "delivered"  # ya es final: no se vuelve a preguntar
+    env.estado_del_mensaje = "delivered"  # already final: not asked again
     ciclo.procesar(conn, vence, lambda r: _hoy(), enviar=env)
     assert almacen.obtener(conn, rec["token"])["mensaje_estado"] == "undelivered"
     assert almacen.por_revisar(conn) == []
@@ -300,7 +300,7 @@ def test_el_link_abre_la_app_con_el_plan_sin_marcar(client):
     r = client.get(f"/r/{tk}", follow_redirects=False)
     assert r.status_code in (302, 307)
     assert r.headers["location"] == f"/?simbolo=SPY&monto=1000&plazo=180&perfil=moderado&recordatorio={tk}"
-    # La vista previa de WhatsApp visita el link: eso no cuenta como abierto.
+    # WhatsApp's link preview visits the link: that doesn't count as opened.
     assert client.get(f"/api/habit/{tk}").json()["abierto_en"] is None
 
 
@@ -372,7 +372,7 @@ def test_si_whatsapp_pide_plantilla_cae_a_sms(monkeypatch):
 
 def test_canal_sms_directo(monkeypatch):
     monkeypatch.setenv("HABITO_CANAL", "sms")
-    monkeypatch.setattr(twilio, "whatsapp", lambda t, x: pytest.fail("no debe usar WhatsApp"))
+    monkeypatch.setattr(twilio, "whatsapp", lambda t, x: pytest.fail("must not use WhatsApp"))
     monkeypatch.setattr(twilio, "sms", lambda t, x: "SM2")
     assert twilio.mensaje("+15550100123", "hola") == "SM2"
 

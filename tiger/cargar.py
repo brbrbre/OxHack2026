@@ -1,8 +1,8 @@
-"""Carga Tiger Data: esquema, precios de la caché y predicciones del backtest ya calificadas.
+"""Loads Tiger Data: schema, prices from the cache and backtest predictions, already graded.
 
-Uso:
-    python -m tiger.cargar                  # esquema + precios + backtest (modelo del equipo, 30 días, desde 2022)
-    python -m tiger.cargar --calificar      # pone el resultado real a las predicciones en vivo cuyo plazo ya pasó
+Usage:
+    python -m tiger.cargar                  # schema + prices + backtest (team model, 30 days, from 2022)
+    python -m tiger.cargar --calificar      # adds the real outcome to live predictions whose horizon has passed
     python -m tiger.cargar --solo-precios
 """
 
@@ -63,7 +63,7 @@ def subir_precios(conn, simbolos: list[str], refrescar: bool = False) -> int:
 
 
 def filas_backtest(df: pd.DataFrame, simbolo: str, plazo: int, modelo: str, perfil: str) -> list[tuple]:
-    """Convierte las ventanas del backtest en filas de `predicciones`, ya con su resultado real."""
+    """Turns backtest windows into `predicciones` rows, with their real outcome."""
     return [(db.en_utc(r.fecha), simbolo, plazo, modelo, "backtest", perfil,
              float(r.esperado), float(r.bajo), float(r.alto), float(r.prob_perdida), float(r.fraccion),
              str(r.decision), float(r.real)) for r in df.itertuples()]
@@ -78,7 +78,7 @@ def subir_backtest(conn, simbolos: list[str], plazo: int, perfil: str, desde: st
     for s in simbolos:
         df = run(get_close(s), s, plazo_dias=plazo, perfil=perfil, predict=predict, es_cripto=is_crypto(s), desde=desde)
         total += db.guardar_predicciones(conn, filas_backtest(df, s, plazo, nombre, perfil))
-        print(f"   {s:<12} {len(df):>4} ventanas", flush=True)
+        print(f"   {s:<12} {len(df):>4} windows", flush=True)
     return total
 
 
@@ -110,22 +110,22 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--desde", default="2022-01-01")
     a = ap.parse_args(argv)
     if not db.url():
-        print("Falta TIGER_DATABASE_URL en .env")
+        print("TIGER_DATABASE_URL is missing from .env")
         return 2
     t0 = reloj.time()
     with db.conectar() as conn:
         db.crear_esquema(conn)
         if a.calificar:
-            print(f"Predicciones calificadas: {calificar(conn)}")
+            print(f"Predictions graded: {calificar(conn)}")
         else:
-            print(f"Precios: {subir_precios(conn, all_symbols())} filas")
+            print(f"Prices: {subir_precios(conn, all_symbols())} rows")
             if not a.solo_precios:
                 n = subir_backtest(conn, all_symbols(), a.plazo, a.perfil, a.desde, a.modelo)
-                print(f"Predicciones del backtest: {n} filas")
+                print(f"Backtest predictions: {n} rows")
             conn.commit()
-            conn.autocommit = True  # TimescaleDB no refresca una vista continua dentro de una transacción
+            conn.autocommit = True  # TimescaleDB won't refresh a continuous aggregate inside a transaction
             conn.execute("CALL refresh_continuous_aggregate('precios_semanales', NULL, NULL)")
-    print(f"Listo en {reloj.time() - t0:.0f} s")
+    print(f"Done in {reloj.time() - t0:.0f} s")
     return 0
 
 

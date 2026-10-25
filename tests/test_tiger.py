@@ -1,4 +1,4 @@
-"""Tiger Data: lo que se puede probar sin base (filas y que todo sea opcional). La carga real se prueba con la URL."""
+"""Tiger Data: what can be tested without a database (rows, and that everything is optional). The real load is tested with the URL."""
 
 import pandas as pd
 
@@ -7,7 +7,7 @@ from tiger import cargar, db
 
 def test_sin_url_no_hace_nada():
     assert db.url() is None
-    db.guardar_en_vivo(("x",))  # no debe lanzar
+    db.guardar_en_vivo(("x",))  # must not raise
 
 
 def test_filas_de_precios_en_utc():

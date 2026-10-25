@@ -1,8 +1,8 @@
-"""Tutor de dinero para principiantes: contesta dudas sobre el activo en pantalla y de finanzas en general.
+"""Ask Horizon: a money tutor for beginners. Answers questions about the asset on screen and money in general.
 
-Gemini enseña, no decide: recibe la ficha del activo y los números que ya
-calculó la app, y tiene prohibido decir si comprar o vender, predecir precios o
-cambiar un número. Sin clave o si falla, contesta con la ficha local.
+Gemini teaches, it doesn't decide: it gets the asset's fact sheet and the numbers
+the app already computed, and it must not say buy or sell, predict prices or
+change a number. Without a key, or if it fails, the local fact sheet answers.
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ def armar_prompt(pregunta: str, simbolo: str | None, nombre: str | None, context
 
 
 def respuesta_local(pregunta: str, simbolo: str | None, nombre: str | None) -> dict:
-    """Sin Gemini: el glosario si la pregunta es de un concepto, la ficha si es del activo."""
+    """Without Gemini: the glossary for a concept question, the fact sheet for an asset question."""
     nota = " (The tutor is offline, so this is our short explainer.)"
     p = pregunta.lower()
     ficha = texto_ficha(simbolo) if simbolo else None
@@ -86,7 +86,7 @@ def responder(pregunta: str, simbolo: str | None = None, nombre: str | None = No
         return dict(_guardadas[prompt])
     try:
         texto = llamar(prompt)
-    except Exception:  # sin red, cuota o modelo no disponible
+    except Exception:  # no network, quota, or model unavailable
         texto = None
     if not texto:
         return respuesta_local(pregunta, simbolo, nombre)

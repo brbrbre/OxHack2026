@@ -3,23 +3,31 @@
 OxHack 26, Oxford, 24-25 October 2026. Theme: **TIME**.
 Challenge: HRT "Best Use of Data for Predictions and Decision Making".
 
-**Live demo:** http://95.179.232.47 (hosted on Vultr, London).
+**Live demo:** https://95.179.232.47.sslip.io (hosted on Vultr, London; also http://95.179.232.47).
+**Pitch:** `docs/pitch.md`, with every outside figure sourced in `docs/pitch-sources.md`.
 
 ## The problem
 
-People want to invest, but they don't know when. Most apps answer with a chart, not a decision.
-Horizon asks three things: which asset, how much, and for how long.
-Then it answers: how much to invest **today**, and why.
+People want to invest, but they don't know when, so most do nothing or follow a stranger online.
+- 61% of UK adults with £10,000+ to invest keep three quarters of it in cash (FCA, 2025).
+- In Mexico, 76.5% of adults have a bank product, but only 3.4% hold a term deposit or a fund (INEGI, 2024).
+- Finfluencer followers scored 42% on an investing quiz, yet 63% rated their own knowledge as high (FINRA Foundation, 2026).
+- Only 9% of UK adults got regulated advice in a year (FCA, 2025).
+
+Most apps answer with a chart, not a decision.
+Horizon asks which asset, how much, for how long and how much risk you accept.
+Then it answers: how much to invest **today**, why, and it checks in when your time is up.
 
 ## What it does
 
-- **One asset.** Pick from 21 assets: US, Mexican and UK stocks, ETFs, indices, currencies and crypto. Horizon answers *Invest*, *Wait* or *Not now*, with the amount to invest today.
+- **I have assets in mind.** Pick one or several of 21 assets: US, Mexican and UK stocks, ETFs, indices, currencies and crypto. Horizon answers *Invest*, *Wait* or *Not now* for each, with the amount to invest today.
 - **Help me choose.** Give an amount, a horizon, a risk profile and the asset types you like. Horizon builds a plan with up to 5 assets and keeps the rest in cash.
 - **Reasons, not vibes.** Every answer shows its numbers: expected return, chance of loss and the bad-case loss. It also flags upcoming central bank decisions.
 - **Guided setup.** New to investing? Horizon asks one question at a time and explains each choice.
 - **In short.** Gemini sums up the answer in plain words. Press *Listen* to hear it in an ElevenLabs voice.
 - **Ask Horizon.** A money tutor built on Gemini. Ask what a company does, or what an ETF is. It explains with everyday examples, and never says buy or sell.
-- **Make it a habit.** Leave your number and Horizon checks in when your horizon ends. It sends a WhatsApp with that day's answer and a link back to your plan. If you don't open it, it gives you a short call in an ElevenLabs voice.
+- **Make it a habit.** For one asset or a whole plan. Leave your number and Horizon checks in when your horizon ends. It sends a WhatsApp with that day's answer and a link back to your plan. If you don't open it, it gives you a short call in an ElevenLabs voice. It is one or the other: opening the link cancels the call.
+- **For everyone.** A landing page that explains the idea, five languages, local currencies, and a dark theme. Model explanations and audio stay in English.
 
 Gemini and ElevenLabs only write and read. They never change Horizon's numbers.
 
@@ -32,13 +40,14 @@ This is an educational prototype. It is not financial advice.
 3. **Filter.** If the model expects a loss, the answer is *Not now*.
 4. **Events.** A Fed or Bank of England rate decision within 3 days? Invest half now and half after.
 
-Why sizing and not timing? Timing rarely beats investing now. Vanguard found a lump sum beats staged entry 68% of the time (1976-2022). Sizing by volatility does cut large drawdowns (Harvey et al. 2018).
+Why sizing and not timing? Timing rarely beats investing now. Vanguard found a lump sum beats staged entry 68% of the time (1976-2022). Sizing by volatility makes extreme losses less severe (Harvey et al. 2018).
 
 ## The habit, honestly
 
 The demo sends real messages, but only to the team's numbers.
 WhatsApp goes through the Twilio sandbox, and calls come from a Twilio number.
 The panel shows what Twilio reports: delivered, busy, no answer or completed.
+The link only counts as opened when the app loads, because WhatsApp's link-preview robot also visits it.
 In production, the first WhatsApp message needs a template approved by Meta.
 The demo can skip the waiting period with one button, so nobody waits for the full horizon.
 
@@ -49,7 +58,7 @@ The demo can skip the waiting period with one button, so nobody waits for the fu
 | Gemini | Writes the *In short* summary, answers *Ask Horizon* and drafts the reminder message |
 | ElevenLabs | Reads the summary aloud and voices the reminder call |
 | Tiger Data | Stores daily prices and every prediction; one command grades them once their horizon ends |
-| Vultr | Hosts the live demo in London |
+| Vultr | Hosts the live demo in London, with HTTPS through Caddy |
 
 Tiger Data and Vultr are optional. Without them, the app runs the same on a laptop.
 
@@ -124,6 +133,26 @@ What we learned:
 - **We do not report the 2019-2021 walk-forward for Trend + TDA.** Those years are inside its training data.
 - **The choice between settings is fragile.** Adding 2 assets changed the winner for the baseline.
 
+## The final version: what changed during the weekend
+
+What we added:
+- Trend + TDA (Brisma) became the main model; XGBoost (Felipe) is the backup and the 3-year baseline is the fallback.
+- "Help me choose" plans, "In short" with Listen, "Ask Horizon", and the habit for one asset or a whole plan.
+- A landing page, a guided setup, several assets at once, five languages, local currencies and a dark theme (Carlos).
+- Real status from Twilio in the habit panel, HTTPS on the demo, and Tiger Data grading.
+
+What we changed after testing:
+- The first rule blocked instead of sizing and sat in cash 84% of the time. It now invests by default and risk sets the amount.
+- The trend brake did not help in training, so it is off.
+- The habit link is marked opened by the app, not by the link, because WhatsApp's preview robot visits every link.
+
+What we left out:
+- WhatsApp through Meta's Cloud API: creating the test number failed twice, so the demo uses the Twilio sandbox.
+- SMS as a second channel: a US Twilio number can't text UK mobiles. The code supports it (`HABITO_CANAL=sms`); the app doesn't offer it.
+- Alpha Vantage, the Streamlit fallback and Delta: not needed in the end.
+- A single API call for several selected assets: the app calls `/api/decide` once per asset instead.
+- Banxico's rate calendar: its late-2026 dates were not published where we looked.
+
 ## Limitations
 
 - Cash earns 0%. No trading costs.
@@ -144,21 +173,23 @@ uvicorn api.main:app --port 8000             # API
 cd app && npm ci && npm run dev              # web app on http://localhost:5173
 ```
 
-Tests: `python -m pytest -q tests` (no internet needed).
+Tests: `python -m pytest -q tests` (125 tests, no internet needed) and `cd app && npm test` (436 tests).
+Copy `.env.example` to `.env` for Gemini, ElevenLabs, Tiger Data and Twilio. Without keys, the app still runs with local texts.
 
 ## Repo map
 
 | Folder | What |
 |---|---|
 | `data/` | Prices from Yahoo and Binance, with a local cache |
-| `model/` | The team's prediction model |
+| `model/` | Trend + TDA (Brisma) and XGBoost (Felipe), plus the training notebooks |
 | `decision/` | Decision rule, plan builder, backtest, calibration, forecast evaluation |
 | `api/` | FastAPI server: `/api/assets`, `/api/prices`, `/api/decide`, `/api/plan`, `/api/summary`, `/api/ask`, `/api/habit` |
 | `explain/` | Gemini summary and tutor, ElevenLabs voice |
 | `habito/` | Reminders: WhatsApp, call and their real status from Twilio |
 | `tiger/` | Prices and graded predictions in Tiger Data |
-| `deploy/` | Server setup for the Vultr demo |
-| `app/` | React web app |
+| `deploy/` | How the Vultr demo runs: systemd, Caddy and HTTPS |
+| `app/` | React web app (Carlos): landing page, planner, five languages |
+| `docs/` | Pitch, pitch sources and Devpost text |
 
 ## Team
 

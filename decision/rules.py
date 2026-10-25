@@ -1,18 +1,18 @@
-"""Regla de decisión: convierte la predicción del modelo en INVERTIR, ESPERAR o NO_POR_AHORA.
+"""Decision rule: turns the model's forecast into INVERTIR, ESPERAR or NO_POR_AHORA.
 
-Entrada: la salida de model.predict() (ver model/README.md), el monto, el
-plazo y la fecha. Salida: la decisión, sus razones y recomendaciones.
-Los textos van en inglés porque los ve el jurado; los códigos de decisión y perfil no cambian.
+Input: the output of model.predict() (see model/README.md), the amount, the
+horizon and the date. Output: the decision, its reasons and recommendations.
+Texts are in English for the user; decision and profile codes stay as they are.
 
-Uso:
+Usage:
     from decision.rules import decide
     r = decide(pred, monto=1000, plazo_dias=30, simbolo="SPY")
 
-Demo con predicciones de ejemplo (no son del modelo):
+Demo with example forecasts (not from the model):
     python -m decision.rules
 
-Los umbrales de abajo son valores iniciales. Se calibran con el backtest
-(seguir la app contra invertir siempre el primer día) y se ajustan aquí.
+The thresholds below were chosen with the calibration backtest
+(following the app vs always investing on day one) and are set here.
 """
 
 from __future__ import annotations
@@ -26,34 +26,34 @@ INVERTIR = "INVERTIR"
 ESPERAR = "ESPERAR"
 NO_POR_AHORA = "NO_POR_AHORA"
 
-# --- Parámetros ----------------------------------------------------------------
-# La regla dimensiona el monto en lugar de bloquearlo: invertir es lo normal y el
-# riesgo decide CUÁNTO. Base: Vanguard 2023 (invertir de una vez gana a entrar
-# en partes 68% del tiempo), Harvey et al. 2018 (dimensionar por volatilidad
-# baja las caídas) y la evidencia de tendencia a 1-12 meses (Moskowitz, Ooi y
-# Pedersen 2012). Detalle en reports/ de la carpeta del equipo.
+# --- Parameters ----------------------------------------------------------------
+# The rule sizes the amount instead of blocking it: investing is the default and
+# risk decides HOW MUCH. Basis: Vanguard 2023 (a lump sum beats phasing in
+# 68% of the time), Harvey et al. 2018 (sizing by volatility makes extreme
+# losses less severe) and the 1-12 month trend evidence (Moskowitz, Ooi and
+# Pedersen 2012).
 
-# Pérdida que acepta cada perfil en el peor escenario del plazo (percentil 5).
-# La define la persona, no se calibra.
+# Loss each profile accepts in the bad case over the horizon (5th percentile).
+# The person chooses it; it is not calibrated.
 PEOR_CASO_ACEPTABLE = {"conservador": 0.05, "moderado": 0.10, "agresivo": 0.20}
 
-# Lo que sí se calibra, con 2016-2021 (ver decision/calibrate.py). Valores
-# elegidos el 24 oct 2026 con el baseline: entre 6 configuraciones ganó la [0].
+# What is calibrated, on 2016-2021 (see decision/calibrate.py). Values chosen on
+# 24 Oct 2026: setting [0] won among 6 settings.
 PARAMS = {
-    # Si True, no se invierte cuando el modelo espera rendimiento <= 0 o
-    # probabilidad de pérdida >= 50 %. Aquí es donde un buen modelo agrega valor.
+    # If True, don't invest when the model expects a return <= 0 or a
+    # chance of loss >= 50%. This is where a good model adds value.
     "exigir_expectativa_positiva": True,
-    # Multiplica la fracción cuando el precio está abajo de hace 12 meses.
-    # 1.0 = apagado: el freno no mejoró el Sharpe de entrenamiento.
+    # Scales the share down when the price is below its level 12 months ago.
+    # 1.0 = off: the brake did not improve the training Sharpe.
     "freno_tendencia": 1.0,
-    # Multiplica la fracción si hay decisión de tasas en los próximos días.
-    # No se puede calibrar: el calendario empieza en oct 2026.
+    # Scales the share down if a rate decision is due in the next few days.
+    # Cannot be calibrated: the calendar starts in October 2026.
     "freno_evento": 0.5,
-    # Debajo de esta fracción, la respuesta es ESPERAR en lugar de INVERTIR.
+    # Below this share, the answer is ESPERAR instead of INVERTIR.
     "umbral_invertir": 0.5,
 }
 DIAS_ANTES_DE_EVENTO = 3
-# Volatilidad del plazo a partir de la cual se sugiere entrar en partes.
+# Volatility over the horizon above which phasing in is suggested.
 VOLATILIDAD_ALTA = 0.08
 
 
@@ -69,10 +69,10 @@ PERFIL_EN = {"conservador": "conservative", "moderado": "moderate", "agresivo": 
 
 
 def fraccion_por_riesgo(bajo: float, tolerancia: float) -> float:
-    """Parte del monto con la que el peor escenario no pasa de la tolerancia.
+    """Share of the amount for which the bad case stays within the tolerance.
 
-    Es un presupuesto de riesgo tipo VaR al 95 %: el extremo bajo del
-    intervalo del 90 % es el percentil 5.
+    It is a VaR-style risk budget at 95%: the low end of the 90% interval
+    is the 5th percentile.
     """
     if bajo >= 0:
         return 1.0
@@ -82,9 +82,9 @@ def fraccion_por_riesgo(bajo: float, tolerancia: float) -> float:
 def decide(pred: dict, monto: float, plazo_dias: int, simbolo: str,
            hoy: date | None = None, perfil: str = "moderado",
            tendencia: float | None = None, params: dict | None = None) -> dict:
-    """Decide con reglas fijas y explicables. No usa ningún LLM.
+    """Decides with fixed, explainable rules. No LLM is involved.
 
-    tendencia: rendimiento de los últimos 12 meses (decision.signals.tendencia).
+    tendencia: return over the last 12 months (decision.signals.tendencia).
     """
     p = {**PARAMS, **(params or {})}
     hoy = hoy or date.today()
@@ -107,7 +107,7 @@ def decide(pred: dict, monto: float, plazo_dias: int, simbolo: str,
         razones.append("The model sees a higher chance of losing than gaining over this period.")
         recomendaciones.append("Check again in a few days, or try a longer period.")
     else:
-        # 2. Tamaño por riesgo: cuánto aguanta el perfil en el peor escenario.
+        # 2. Size by risk: how much the profile can take in the bad case.
         fraccion = fraccion_por_riesgo(bajo, tolerancia)
         if fraccion < 1:
             razones.append(
@@ -117,13 +117,13 @@ def decide(pred: dict, monto: float, plazo_dias: int, simbolo: str,
         else:
             razones.append(f"Even in a bad scenario the loss stays within your {PERFIL_EN[perfil]} profile.")
 
-        # 3. Freno de tendencia: precio abajo de hace 12 meses.
+        # 3. Trend brake: price below its level 12 months ago.
         if tendencia is not None and tendencia < 0 and p["freno_tendencia"] < 1:
             fraccion *= p["freno_tendencia"]
             razones.append(f"The price is {_pct(tendencia)} versus 12 months ago: the trend is down.")
             recomendaciones.append("Invest the rest in parts if the trend turns up.")
 
-        # 4. Freno de evento: decisión de tasas en los próximos días.
+        # 4. Event brake: a rate decision in the next few days.
         if proximos and p["freno_evento"] < 1:
             e = proximos[0]
             fraccion *= p["freno_evento"]
@@ -167,26 +167,26 @@ def decide(pred: dict, monto: float, plazo_dias: int, simbolo: str,
 
 
 EJEMPLOS = [
-    ("SPY, señal buena", "SPY", date(2026, 11, 2),
+    ("SPY, good signal", "SPY", date(2026, 11, 2),
      {"rendimiento_esperado": 0.02, "volatilidad": 0.04, "prob_perdida": 0.31, "intervalo": (-0.045, 0.085)}),
-    ("SPY, antes de la Fed", "SPY", date(2026, 10, 26),
+    ("SPY, before the Fed", "SPY", date(2026, 10, 26),
      {"rendimiento_esperado": 0.02, "volatilidad": 0.04, "prob_perdida": 0.31, "intervalo": (-0.045, 0.085)}),
-    ("BTC, mucho riesgo", "BTCUSDT", date(2026, 11, 2),
+    ("BTC, high risk", "BTCUSDT", date(2026, 11, 2),
      {"rendimiento_esperado": 0.03, "volatilidad": 0.15, "prob_perdida": 0.42, "intervalo": (-0.22, 0.28)}),
-    ("WALMEX, expectativa negativa", "WALMEX.MX", date(2026, 11, 2),
+    ("WALMEX, negative expectation", "WALMEX.MX", date(2026, 11, 2),
      {"rendimiento_esperado": -0.01, "volatilidad": 0.05, "prob_perdida": 0.58, "intervalo": (-0.09, 0.07)}),
 ]
 
 
 def main() -> int:
-    print("Predicciones de EJEMPLO, no del modelo. Monto $1,000, plazo 30 días, perfil moderado.\n")
+    print("EXAMPLE forecasts, not from the model. Amount $1,000, horizon 30 days, moderate profile.\n")
     for titulo, simbolo, hoy, pred in EJEMPLOS:
         r = decide(pred, monto=1000, plazo_dias=30, simbolo=simbolo, hoy=hoy)
-        print(f"== {titulo} (hoy {hoy}) -> {r['decision']}")
+        print(f"== {titulo} (today {hoy}) -> {r['decision']}")
         for x in r["razones"]:
-            print(f"   razón: {x}")
+            print(f"   reason: {x}")
         for x in r["recomendaciones"]:
-            print(f"   recomendación: {x}")
+            print(f"   recommendation: {x}")
         print()
     return 0
 

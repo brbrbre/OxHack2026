@@ -1,11 +1,11 @@
-"""Predicción baseline: promedio y volatilidad históricos, sin modelo.
+"""Baseline forecast: historical mean and volatility, no model.
 
-Dos usos:
-1. El API la usa mientras no exista model/predict.py.
-2. Es la referencia contra la que se compara el modelo de Felipe y Brisma.
+Two uses:
+1. The API falls back to it if model/predict.py can't load.
+2. It is the yardstick Trend + TDA and XGBoost are compared against.
 
-Supone rendimientos diarios log-normales e independientes, estimados con los
-últimos 3 años. Devuelve el mismo contrato que model.predict().
+Assumes independent log-normal daily returns, estimated on the last 3 years.
+Returns the same contract as model.predict().
 """
 
 from __future__ import annotations
@@ -16,12 +16,12 @@ import numpy as np
 import pandas as pd
 
 NOMBRE = "baseline"
-VENTANA_DIAS = 756  # unos 3 años de sesiones de bolsa
+VENTANA_DIAS = 756  # about 3 years of trading sessions
 Z_90 = 1.6449       # intervalo central del 90 %
 
 
 def sesiones(plazo_dias: int, es_cripto: bool) -> float:
-    """Convierte días de calendario en días de mercado."""
+    """Converts calendar days into market days."""
     return float(plazo_dias) if es_cripto else plazo_dias * 252 / 365
 
 
@@ -32,7 +32,7 @@ def _normal_cdf(x: float) -> float:
 def predict(precios: pd.Series, plazo_dias: int, es_cripto: bool = False) -> dict:
     log_ret = np.log(precios.astype(float)).diff().dropna().tail(VENTANA_DIAS)
     if len(log_ret) < 30:
-        raise ValueError("Hacen falta al menos 30 días de precios.")
+        raise ValueError("At least 30 days of prices are needed.")
     h = sesiones(plazo_dias, es_cripto)
     mu = float(log_ret.mean()) * h
     sigma = float(log_ret.std(ddof=1)) * math.sqrt(h)

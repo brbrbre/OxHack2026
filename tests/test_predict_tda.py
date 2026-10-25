@@ -1,4 +1,4 @@
-"""Pruebas del modelo tendencia + TDA con precios sintéticos. No usan internet."""
+"""Trend + TDA model tests with synthetic prices. No internet needed."""
 
 import numpy as np
 import pandas as pd

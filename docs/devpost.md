@@ -30,7 +30,9 @@ If you don't know what to buy, "Help me choose" builds a plan of up to five asse
 
 Gemini sums up each answer, and ElevenLabs reads it aloud. "Ask Horizon" explains money terms in plain words.
 
-"Make it a habit" checks in when your horizon ends. You get a WhatsApp with that day's answer and a link to your plan. If you don't open it, Horizon calls you. In the demo this reaches only the team's numbers.
+"Make it a habit" checks in when your horizon ends, for one asset or a whole plan. You get a WhatsApp with that day's answer and a link to your plan. If you don't open it, Horizon calls you. In the demo this reaches only the team's numbers.
+
+The app has a landing page, a guided setup, five languages and local currencies.
 
 ## How we built it
 
@@ -77,4 +79,4 @@ python, pandas, numpy, xgboost, fastapi, react, typescript, recharts, yfinance, 
 ## Links
 
 - GitHub: https://github.com/brbrbre/OxHack2026
-- Live demo: http://95.179.232.47
+- Live demo: https://95.179.232.47.sslip.io
