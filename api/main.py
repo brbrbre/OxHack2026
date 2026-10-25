@@ -247,9 +247,11 @@ def habito_conn():
 
 
 class RemindRequest(BaseModel):
+    """Un activo (simbolo) o un plan de "Help me choose" (tipos)."""
     telefono: str = Field(min_length=8, max_length=20)
     consentimiento: bool
-    simbolo: str
+    simbolo: str | None = None
+    tipos: list[str] | None = None
     monto: float = Field(gt=0, le=1e9)
     plazo_dias: int = Field(ge=1, le=730)
     perfil: Literal["conservador", "moderado", "agresivo"] = "moderado"
@@ -257,11 +259,26 @@ class RemindRequest(BaseModel):
 
 def _vista(rec: dict) -> dict:
     claves = ("token", "vence", "estado", "enviado_en", "abierto_en", "llamado_en", "error", "simbolo", "plazo_dias",
-              "mensaje_estado", "llamada_estado")
+              "mensaje_estado", "llamada_estado", "tipos")
     return {k: rec[k] for k in claves} | {"demo": os.getenv("HABITO_DEMO") == "1"}
 
 
+NOMBRE_PLAN = "your portfolio"
+
+
+def _plan_hoy(monto: float, plazo_dias: int, perfil: str, tipos: list[str]) -> dict:
+    """El plan de hoy con la forma que esperan los textos del recordatorio."""
+    r = plan_route(PlanRequest(monto=monto, plazo_dias=plazo_dias, perfil=perfil, tipos=tipos))
+    n = r["numeros"]
+    return {"decision": "INVERTIR" if n["invertido"] > 0 else "ESPERAR",
+            "activos": ", ".join(a["nombre"] for a in r["cartera"]),
+            "numeros": {"monto": n["monto"], "monto_sugerido": n["invertido"], "plazo_dias": n["plazo_dias"],
+                        "rendimiento_esperado": n["rendimiento_esperado"], "prob_perdida": None}}
+
+
 def _decidir_hoy(rec: dict) -> dict:
+    if rec.get("tipos"):
+        return _plan_hoy(rec["monto"], rec["plazo_dias"], rec["perfil"], rec["tipos"].split(","))
     return decide_route(DecideRequest(simbolo=rec["simbolo"], monto=rec["monto"], plazo_dias=rec["plazo_dias"],
                                       perfil=rec["perfil"]))
 
@@ -276,6 +293,13 @@ def habit_remind(req: RemindRequest):
         raise HTTPException(400, "Use the international format, for example +15550100123")
     if telefono not in habito_ciclo.permitidos():
         raise HTTPException(403, "In this demo, reminders only go to the team's verified numbers")
+    if req.tipos:
+        hoy = _plan_hoy(req.monto, req.plazo_dias, req.perfil, req.tipos)
+        rec = habito_db.crear(habito_conn(), telefono, "PLAN", NOMBRE_PLAN, req.monto, req.plazo_dias, req.perfil,
+                              hoy["decision"], float(hoy["numeros"]["monto_sugerido"]), tipos=req.tipos)
+        return _vista(rec)
+    if not req.simbolo:
+        raise HTTPException(400, "Choose an asset or a plan")
     _check_symbol(req.simbolo)
     hoy = decide_route(DecideRequest(simbolo=req.simbolo, monto=req.monto, plazo_dias=req.plazo_dias, perfil=req.perfil))
     rec = habito_db.crear(habito_conn(), telefono, req.simbolo, _nombre(req.simbolo), req.monto, req.plazo_dias,
@@ -316,8 +340,9 @@ def habit_open(token: str):
     rec = habito_db.obtener(habito_conn(), token)
     if not rec:
         return RedirectResponse("/")
-    q = urlencode({"simbolo": rec["simbolo"], "monto": int(rec["monto"]), "plazo": rec["plazo_dias"],
-                   "perfil": rec["perfil"], "recordatorio": token})
+    plan = {"view": "planner", "modo": "plan", "tipos": rec["tipos"]} if rec.get("tipos") else {"simbolo": rec["simbolo"]}
+    q = urlencode(plan | {"monto": int(rec["monto"]), "plazo": rec["plazo_dias"], "perfil": rec["perfil"],
+                          "recordatorio": token})
     return RedirectResponse(f"/?{q}")
 
 

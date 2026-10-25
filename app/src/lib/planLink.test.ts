@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { PlanDraft } from '../components/InvestmentForm'
-import { planFromSearch, reminderFromSearch } from './planLink'
+import { modelLabel } from './labels'
+import { modeFromSearch, planFromSearch, reminderFromSearch } from './planLink'
 
 const base: PlanDraft = { simbolo: 'SPY', monto: '1000', plazo_dias: 30, perfil: 'moderado', tipos: ['ETFs'] }
 
@@ -21,5 +22,23 @@ describe('reminder token', () => {
     expect(reminderFromSearch('?simbolo=SPY&recordatorio=abcDEF_123-xyz')).toBe('abcDEF_123-xyz')
     expect(reminderFromSearch('?simbolo=SPY')).toBeNull()
     expect(reminderFromSearch('?recordatorio=../../etc')).toBeNull()
+  })
+})
+
+describe('plan reminder link', () => {
+  it('reopens Help me choose with the same asset types', () => {
+    const search = '?view=planner&modo=plan&tipos=ETFs%2CCrypto&monto=1000&plazo=90&perfil=agresivo&recordatorio=abcDEF_123-xyz'
+    expect(modeFromSearch(search)).toBe('plan')
+    expect(planFromSearch(search, base)).toMatchObject({ tipos: ['ETFs', 'Crypto'], monto: '1000', plazo_dias: 90, perfil: 'agresivo' })
+    expect(modeFromSearch('?simbolo=SPY')).toBe('asset')
+    expect(planFromSearch('?simbolo=SPY', base).tipos).toEqual(base.tipos)
+  })
+})
+
+describe('model name', () => {
+  it('shows a readable name, not the internal id', () => {
+    expect(modelLabel('tendencia-tda')).toBe('Trend + TDA')
+    expect(modelLabel('xgboost')).toBe('XGBoost')
+    expect(modelLabel('other')).toBe('other')
   })
 })

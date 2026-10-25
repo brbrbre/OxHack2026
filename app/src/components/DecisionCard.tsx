@@ -2,7 +2,7 @@ import { ArrowDownRight, ArrowUpRight, CalendarClock, Info, Lightbulb, LoaderCir
 import type { DecideResponse } from '../api/types'
 import { useCurrency } from '../currency/CurrencyContext'
 import { useI18n } from '../i18n/I18nContext'
-import { DECISION_LABELS, PROFILE_LABELS } from '../lib/labels'
+import { DECISION_LABELS, PROFILE_LABELS, modelLabel } from '../lib/labels'
 import AssetLogo from './AssetLogo'
 import ErrorMessage from './ErrorMessage'
 
@@ -46,7 +46,7 @@ export default function DecisionCard({ result, pending, error, onRetry, headingI
       aria-labelledby={headingId} aria-busy={pending}>
       {result && <div className="panel-heading">
         <span className="model-badge">{result.modelo === 'baseline'
-          ? t('Prediction: baseline (3-year historical average)') : t('Prediction: {model}', { model: result.modelo })}</span>
+          ? t('Prediction: baseline (3-year historical average)') : t('Prediction: {model}', { model: modelLabel(result.modelo) })}</span>
       </div>}
       <div aria-live="polite" aria-atomic="true">
         {pending ? (

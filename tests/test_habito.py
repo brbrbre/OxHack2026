@@ -71,6 +71,17 @@ def test_plantilla_de_espera_y_de_plan():
     assert "Your plan for Walmart de México has ended" in mensajes.whatsapp(rec, _hoy(), "http://x/r/abc", llamar=lambda h: None)[0]
 
 
+def test_texto_de_un_plan():
+    rec = {"nombre": "your portfolio", "decision": "INVERTIR", "plazo_dias": 90, "sugerido": 800.0, "monto": 1000.0}
+    hoy = {"decision": "INVERTIR", "activos": "Nasdaq 100, Apple",
+           "numeros": {"monto": 1000.0, "monto_sugerido": 700.0, "plazo_dias": 90, "rendimiento_esperado": 0.02,
+                       "prob_perdida": None}}
+    h = mensajes.hechos(rec, hoy, "http://x/r/abc")
+    assert h["today_assets"] == "Nasdaq 100, Apple" and h["today_chance_of_loss"] == "not computed for a plan"
+    texto, fuente = mensajes.whatsapp(rec, hoy, "http://x/r/abc", llamar=lambda h: None)
+    assert fuente == "template" and "your portfolio" in texto and texto.endswith("\n\nhttp://x/r/abc")
+
+
 def test_gemini_solo_si_trae_link_y_activo():
     rec = {"nombre": "Walmart de México", "decision": "ESPERAR", "plazo_dias": 180, "sugerido": 579.0, "monto": 1000.0}
     bueno = "Hi! Your wait on Walmart de México is over. Today: invest $800. Review: http://x/r/abc"
@@ -291,6 +302,28 @@ def test_el_link_abre_la_app_con_el_plan_sin_marcar(client):
     assert r.headers["location"] == f"/?simbolo=SPY&monto=1000&plazo=180&perfil=moderado&recordatorio={tk}"
     # La vista previa de WhatsApp visita el link: eso no cuenta como abierto.
     assert client.get(f"/api/habit/{tk}").json()["abierto_en"] is None
+
+
+def test_recordatorio_de_un_plan(client, monkeypatch):
+    from api import main
+    body = {k: v for k, v in BODY.items() if k != "simbolo"} | {"tipos": ["ETFs", "Crypto"]}
+    r = client.post("/api/habit/remind", json=body)
+    assert r.status_code == 200 and r.json()["simbolo"] == "PLAN" and r.json()["tipos"] == "ETFs,Crypto"
+    tk = r.json()["token"]
+    loc = client.get(f"/r/{tk}", follow_redirects=False).headers["location"]
+    assert loc == f"/?view=planner&modo=plan&tipos=ETFs%2CCrypto&monto=1000&plazo=180&perfil=moderado&recordatorio={tk}"
+    enviados = []
+    monkeypatch.setenv("HABITO_DEMO", "1")
+    monkeypatch.setattr(main.habito_ciclo, "twilio", type("T", (), {"mensaje": staticmethod(lambda t, x: enviados.append(x)),
+                                                                     "llamar": staticmethod(lambda *a: None)}))
+    monkeypatch.setattr(main.habito_mensajes, "llamar_gemini", lambda h: None)
+    assert client.post(f"/api/habit/{tk}/now").json()["estado"] == "enviado"
+    assert "your portfolio" in enviados[0] and f"/r/{tk}" in enviados[0]
+
+
+def test_sin_activo_ni_plan_no_hay_recordatorio(client):
+    body = {k: v for k, v in BODY.items() if k != "simbolo"}
+    assert client.post("/api/habit/remind", json=body).status_code == 400
 
 
 def test_la_app_marca_abierto_al_cargar(client):

@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import type { DecideResponse } from '../api/types'
 import { decisionFixtures } from '../mocks/decisions'
+import { planFixtures } from '../mocks/plan'
 import RemindPanel from './RemindPanel'
 
 function render(result: DecideResponse | null) {
@@ -10,6 +11,12 @@ function render(result: DecideResponse | null) {
 }
 
 describe('reminder entry', () => {
+  it('also appears for a Help me choose plan, so the person reviews the portfolio', () => {
+    const html = renderToStaticMarkup(createElement(RemindPanel, { result: null, plan: planFixtures.sample, tipos: ['ETFs'] }))
+    expect(html).toContain('Make it a habit')
+    expect(html).toContain(`Remind me in ${planFixtures.sample.numeros.plazo_dias} days`)
+  })
+
   it('appears only after an asset answer exists', () => {
     expect(render(null)).toBe('')
     expect(render(decisionFixtures.invest)).toContain('Make it a habit')
