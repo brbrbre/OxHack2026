@@ -5,7 +5,7 @@ import { api } from './api/client'
 import { assetTypesError, errorMessage, isAbortError } from './api/errors'
 import type { AssetsResponse, DecideResponse, PlanResponse, PricesResponse, SummaryResponse } from './api/types'
 import { DEFAULT_NOTICE, USE_MOCKS } from './config'
-import { planFromSearch } from './lib/planLink'
+import { planFromSearch, reminderFromSearch } from './lib/planLink'
 import InvestmentForm from './components/InvestmentForm'
 import type { PlanDraft, PlannerMode } from './components/InvestmentForm'
 import PlannerEntry from './components/PlannerEntry'
@@ -55,6 +55,11 @@ export default function App() {
   const [summaryPending, setSummaryPending] = useState(false)
   const summaryController = useRef<AbortController | null>(null)
   const showWorkspace = hasOpenedResults && !guidedOpen && experience !== null
+
+  useEffect(() => {
+    const token = reminderFromSearch(search)
+    if (token) api.habitOpen(token).catch(() => { /* the plan still opens; the call may still come */ })
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
