@@ -1,4 +1,4 @@
-# Pitch (2 min 30 s)
+# Pitch (2 min 50 s)
 
 Presenters: Brisma and Rocco. Demo on the phone and on the laptop at the same time.
 Lines in [brackets] are actions, not words.
@@ -26,6 +26,15 @@ For people who don't know what to buy.
 Horizon builds a plan with up to five assets, and skips two funds that track the same index.
 It also tells you what to wait on, and why.
 
+## 3b. The habit (20 s) - Brisma
+
+[Open In short and press Listen. Then, in Make it a habit, press the demo button.]
+
+Gemini sums up the answer, and ElevenLabs reads it aloud.
+Investing works when it becomes a habit, so Horizon checks in when your horizon ends.
+It sends a WhatsApp with that day's answer. No reply? It calls you.
+The panel shows what Twilio reports, even a missed call.
+
 ## 4. Does it work? (40 s) - Rocco
 
 We tested it the way a quant would.
@@ -47,6 +56,7 @@ Timing adds 0.08 of Sharpe. Only 1% of random timings match it.
 Horizon does not tell you what will happen.
 It tells you how much you can afford to bet on it.
 Everything we showed runs from one command in our repo.
+It runs on Vultr in London, and Tiger Data keeps every prediction to grade it later.
 
 ## Questions the judges may ask
 
@@ -56,3 +66,5 @@ Everything we showed runs from one command in our repo.
 - **What is TDA?** Persistent homology of the last 63 returns. It tells orderly moves from erratic ones; the trend predicts better when moves are orderly.
 - **Does the model see the future?** No. It only gets prices up to the decision date, and entry is at the next close. A test fails if the model reads data on its own.
 - **Costs?** Not included. Cash earns 0%. Both are listed as limits.
+- **Can the habit reach anyone?** Not yet. The demo writes only to the team through the Twilio sandbox. In production, the first WhatsApp needs a template approved by Meta.
+- **Does Gemini decide anything?** No. It writes and explains. The numbers come from the model and the rule.

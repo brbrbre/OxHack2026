@@ -3,6 +3,8 @@
 OxHack 26, Oxford, 24-25 October 2026. Theme: **TIME**.
 Challenge: HRT "Best Use of Data for Predictions and Decision Making".
 
+**Live demo:** http://95.179.232.47 (hosted on Vultr, London).
+
 ## The problem
 
 People want to invest, but they don't know when. Most apps answer with a chart, not a decision.
@@ -14,7 +16,12 @@ Then it answers: how much to invest **today**, and why.
 - **One asset.** Pick from 21 assets: US, Mexican and UK stocks, ETFs, indices, currencies and crypto. Horizon answers *Invest*, *Wait* or *Not now*, with the amount to invest today.
 - **Help me choose.** Give an amount, a horizon, a risk profile and the asset types you like. Horizon builds a plan with up to 5 assets and keeps the rest in cash.
 - **Reasons, not vibes.** Every answer shows its numbers: expected return, chance of loss and the bad-case loss. It also flags upcoming central bank decisions.
+- **Guided setup.** New to investing? Horizon asks one question at a time and explains each choice.
+- **In short.** Gemini sums up the answer in plain words. Press *Listen* to hear it in an ElevenLabs voice.
 - **Ask Horizon.** A money tutor built on Gemini. Ask what a company does, or what an ETF is. It explains with everyday examples, and never says buy or sell.
+- **Make it a habit.** Leave your number and Horizon checks in when your horizon ends. It sends a WhatsApp with that day's answer and a link back to your plan. If you don't open it, it gives you a short call in an ElevenLabs voice.
+
+Gemini and ElevenLabs only write and read. They never change Horizon's numbers.
 
 This is an educational prototype. It is not financial advice.
 
@@ -26,6 +33,25 @@ This is an educational prototype. It is not financial advice.
 4. **Events.** A Fed or Bank of England rate decision within 3 days? Invest half now and half after.
 
 Why sizing and not timing? Timing rarely beats investing now. Vanguard found a lump sum beats staged entry 68% of the time (1976-2022). Sizing by volatility does cut large drawdowns (Harvey et al. 2018).
+
+## The habit, honestly
+
+The demo sends real messages, but only to the team's numbers.
+WhatsApp goes through the Twilio sandbox, and calls come from a Twilio number.
+The panel shows what Twilio reports: delivered, busy, no answer or completed.
+In production, the first WhatsApp message needs a template approved by Meta.
+The demo can skip the waiting period with one button, so nobody waits for the full horizon.
+
+## Sponsor tools
+
+| Tool | What it does in Horizon |
+|---|---|
+| Gemini | Writes the *In short* summary, answers *Ask Horizon* and drafts the reminder message |
+| ElevenLabs | Reads the summary aloud and voices the reminder call |
+| Tiger Data | Stores daily prices and every prediction; one command grades them once their horizon ends |
+| Vultr | Hosts the live demo in London |
+
+Tiger Data and Vultr are optional. Without them, the app runs the same on a laptop.
 
 ## Data
 
@@ -127,7 +153,11 @@ Tests: `python -m pytest -q tests` (no internet needed).
 | `data/` | Prices from Yahoo and Binance, with a local cache |
 | `model/` | The team's prediction model |
 | `decision/` | Decision rule, plan builder, backtest, calibration, forecast evaluation |
-| `api/` | FastAPI server: `/api/assets`, `/api/prices`, `/api/decide`, `/api/plan` |
+| `api/` | FastAPI server: `/api/assets`, `/api/prices`, `/api/decide`, `/api/plan`, `/api/summary`, `/api/ask`, `/api/habit` |
+| `explain/` | Gemini summary and tutor, ElevenLabs voice |
+| `habito/` | Reminders: WhatsApp, call and their real status from Twilio |
+| `tiger/` | Prices and graded predictions in Tiger Data |
+| `deploy/` | Server setup for the Vultr demo |
 | `app/` | React web app |
 
 ## Team
