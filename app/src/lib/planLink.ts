@@ -15,3 +15,10 @@ export function planFromSearch(search: string, fallback: PlanDraft): PlanDraft {
     perfil: perfil === 'conservador' || perfil === 'moderado' || perfil === 'agresivo' ? perfil : fallback.perfil,
   }
 }
+
+/** Token of the reminder that opened the app, if any. The app reports the visit, not the link itself:
+ * WhatsApp's link preview also fetches the link, but it does not run JavaScript. */
+export function reminderFromSearch(search: string): string | null {
+  const token = new URLSearchParams(search).get('recordatorio')
+  return token && /^[A-Za-z0-9_-]{10,64}$/.test(token) ? token : null
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PlanDraft } from '../components/InvestmentForm'
-import { planFromSearch } from './planLink'
+import { planFromSearch, reminderFromSearch } from './planLink'
 
 const base: PlanDraft = { simbolo: 'SPY', monto: '1000', plazo_dias: 30, perfil: 'moderado', tipos: ['ETFs'] }
 
@@ -13,5 +13,13 @@ describe('reminder link', () => {
   it('ignores missing or invalid values', () => {
     expect(planFromSearch('', base)).toEqual(base)
     expect(planFromSearch('?monto=-5&plazo=45&perfil=yolo', base)).toEqual(base)
+  })
+})
+
+describe('reminder token', () => {
+  it('reads the token the reminder link adds', () => {
+    expect(reminderFromSearch('?simbolo=SPY&recordatorio=abcDEF_123-xyz')).toBe('abcDEF_123-xyz')
+    expect(reminderFromSearch('?simbolo=SPY')).toBeNull()
+    expect(reminderFromSearch('?recordatorio=../../etc')).toBeNull()
   })
 })

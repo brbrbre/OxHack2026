@@ -310,14 +310,26 @@ def habit_now(token: str):
 
 @app.get("/r/{token}")
 def habit_open(token: str):
-    """Link del WhatsApp: marca el recordatorio como abierto y abre la app con el mismo plan."""
+    """Link del WhatsApp: abre la app con el mismo plan. Aquí no se marca nada, porque el robot de la
+    vista previa de WhatsApp también visita el link. Lo marca la app al cargar (POST .../open):
+    un robot no corre JavaScript."""
+    rec = habito_db.obtener(habito_conn(), token)
+    if not rec:
+        return RedirectResponse("/")
+    q = urlencode({"simbolo": rec["simbolo"], "monto": int(rec["monto"]), "plazo": rec["plazo_dias"],
+                   "perfil": rec["perfil"], "recordatorio": token})
+    return RedirectResponse(f"/?{q}")
+
+
+@app.post("/api/habit/{token}/open")
+def habit_mark_open(token: str):
+    """La app cargó desde el link del recordatorio: cuenta como abierto y, si la llamada ya salió, se corta."""
     conn = habito_conn()
     rec = habito_db.obtener(conn, token)
     if not rec:
-        return RedirectResponse("/")
+        raise HTTPException(404, "Reminder not found")
     habito_ciclo.abrir(conn, rec, habito_db.ahora())
-    q = urlencode({"simbolo": rec["simbolo"], "monto": int(rec["monto"]), "plazo": rec["plazo_dias"], "perfil": rec["perfil"]})
-    return RedirectResponse(f"/?{q}")
+    return _vista(habito_db.obtener(conn, token))
 
 
 @app.get("/api/habit/audio/{token}.mp3")

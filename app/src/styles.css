@@ -1,4 +1,6 @@
 :root {
+  /* Light only: in-app browsers (WhatsApp on Android) otherwise darken the page on their own. */
+  color-scheme: only light;
   --paper: #F7F8F6;
   --surface: #FFFFFF;
   --ink: #15202B;
