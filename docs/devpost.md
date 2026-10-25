@@ -1,6 +1,6 @@
 # Devpost submission (draft)
 
-Paste each section into its Devpost field. Prizes to tick: HRT "Best Use of Data for Predictions and Decision Making". [TODO: confirm at the 9:00 Devpost workshop how to opt into each prize.]
+Paste each section into its Devpost field. Prizes to tick: HRT "Best Use of Data for Predictions and Decision Making", Gemini, ElevenLabs, Tiger Data and Vultr. [TODO: confirm at the 9:00 Devpost workshop how to opt into each prize.]
 
 ## Name
 
@@ -20,21 +20,31 @@ You pick an asset, an amount and how long you will hold it. Horizon predicts the
 
 If you don't know what to buy, "Help me choose" builds a plan of up to five assets. It also lists what to wait on, and why.
 
+Gemini sums up each answer, and ElevenLabs reads it aloud. "Ask Horizon" explains money terms in plain words.
+
+"Make it a habit" checks in when your horizon ends. You get a WhatsApp with that day's answer and a link to your plan. If you don't open it, Horizon calls you. In the demo this reaches only the team's numbers.
+
 ## How we built it
 
 - Data: Yahoo Finance and Binance, 21 assets, history back to 1993.
 - Model: trend + topology (TDA) by Brisma, with an XGBoost backup and a simple baseline. All only see prices up to the decision date.
-- Gemini: writes a short summary and answers money questions. It never changes the numbers.
+- Gemini: writes a short summary, answers money questions and drafts the reminder. It never changes the numbers.
+- ElevenLabs: reads the summary aloud and voices the reminder call.
+- Twilio: sends the WhatsApp (sandbox) and places the call. The panel shows the real status Twilio reports.
+- Tiger Data: stores daily prices and every prediction. One command grades them once their horizon ends.
+- Vultr: hosts the live demo in London.
 - Decision rule: invest `min(1, tolerance / |bad case|)` of the amount. Not now if a loss is expected. Half now if a rate decision is 3 days away.
 - Backtest: 30-day windows, entry at the next close, one date grid for all assets.
 - Calibration: 6 settings fixed in advance, chosen on 2016-2021, tested on 2022-today. Block bootstrap and a placebo of random timings.
-- Stack: Python, pandas, NumPy, XGBoost, FastAPI, React, Recharts, Gemini API.
+- Stack: Python, pandas, NumPy, XGBoost, FastAPI, React, Recharts.
 
 ## Challenges we ran into
 
 Our first rule waited too much. It sat in cash 84% of the time and lost to always investing. Research showed timing rarely works and sizing does, so we rebuilt the rule around sizing.
 
 We also caught a bug in our own backtest. It mixed crypto and stock dates and showed a gain in the 2022 crash. A test now guards that.
+
+Our first reminder panel said "we called you" when the line was busy. Twilio had only accepted the call. Now the panel asks Twilio what really happened.
 
 ## Accomplishments that we're proud of
 
@@ -50,13 +60,13 @@ A placebo can fool you too. Our first placebo only shuffled the portfolio's tota
 
 ## What's next
 
-Cash earning the T-bill rate, trading costs, and more assets to reduce survivorship bias.
+Cash earning the T-bill rate, trading costs, and more assets to reduce survivorship bias. For the habit: a WhatsApp template approved by Meta, so reminders can reach anyone.
 
 ## Built with
 
-python, pandas, numpy, xgboost, fastapi, react, typescript, recharts, yfinance, binance-api, gemini
+python, pandas, numpy, xgboost, fastapi, react, typescript, recharts, yfinance, binance-api, gemini, elevenlabs, twilio, tiger-data, timescaledb, vultr
 
 ## Links
 
 - GitHub: https://github.com/brbrbre/OxHack2026
-- [TODO: live demo URL if deployed]
+- Live demo: http://95.179.232.47
