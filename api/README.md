@@ -145,3 +145,22 @@ La persona pide que le recordemos su plan. Al terminar el plazo, el servidor vue
 Variables: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` (número para llamar), `TWILIO_WHATSAPP_FROM` (número del sandbox), `PUBLIC_URL`, `HABITO_PERMITIDOS` (por defecto `DEMO_PHONE`), `HABITO_LLAMADA_A` (parejas `whatsapp=voz` para llamar a otro número que el del WhatsApp; a los celulares de México se les quita el 1 para marcar), `HABITO_ESPERA_MIN` (por defecto 1440), `HABITO_DEMO`, `HABITO_AUTO=1` (revisa recordatorios cada 20 s dentro del API). Los recordatorios viven en `data/cache/habito.sqlite`, fuera del repo, porque llevan teléfonos.
 
 Límites de la demo: el sandbox de WhatsApp de Twilio solo escribe a números que se unieron con "join ..."; la cuenta de prueba solo llama a números verificados y empieza con un aviso de "trial account". En uso real, un mensaje que abre la conversación necesita una plantilla aprobada por Meta.
+
+### `POST /api/plan/selected`
+
+Ruta independiente para repartir el presupuesto **solo entre activos elegidos por la persona**. No cambia `/api/plan`: el plan automático por tipos conserva su tope de 40 % por activo.
+
+```json
+{"simbolos": ["VOO", "GLD"], "monto": 1000, "plazo_dias": 30, "perfil": "moderado"}
+```
+
+- `simbolos` es una lista no vacía, sin repetidos, del catálogo de `/api/assets`. No se manda `tipos`: el servidor encuentra los grupos de esos símbolos. Valida la lista completa antes de cargar precios o ejecutar el modelo; símbolo desconocido: 404, selección vacía/repetida: 400 con `{"error": "texto"}`.
+- `monto` sigue en USD y debe ser mayor que 0 y como máximo 1,000,000,000. `plazo_dias` acepta cualquier entero de 1 a 730 días de calendario. `perfil` conserva los mismos tres códigos y por defecto es `moderado`.
+- Devuelve exactamente la forma de respuesta de `/api/plan`: `cartera`, `efectivo`, las tres listas de decisiones, `resumen`, `numeros`, `modelo` y `aviso`. Las listas contienen solo los símbolos pedidos; no se añaden otros activos.
+- Reutiliza el mismo modelo y motor: solo entran los activos con decisión `INVERTIR`, se omiten los que casi copian a otro elegido, se mantienen hasta 5 posiciones y se ajusta el riesgo total al perfil. Los pesos dependen de la volatilidad, no de un reparto igual ni de Gemini.
+- **Política de concentración distinta y explícita:** en esta ruta el tope por activo es 100 % del presupuesto. Puede resultar un reparto 60/40, una sola posición o todo en efectivo; ninguna distribución está garantizada. El control de riesgo puede dejar parte del presupuesto sin invertir. `peso` es siempre una fracción del presupuesto completo y `invertido + efectivo = monto`.
+- El tope de 100 % no anula los frenos individuales del modelo/regla. Ningún peso final supera la `fraccion` calculada para ese activo por riesgo, tendencia o eventos. Si hace falta reducir una posición, se escala toda la cartera conservando sus proporciones y el resto queda en efectivo, sin redistribuirlo. Por ejemplo, una única posición elegible con `fraccion = 0.5` puede recibir como máximo 50 % del presupuesto, aunque el límite de concentración permita 100 %. Esta protección es propia de la ruta de selección; `/api/plan` conserva su comportamiento anterior.
+
+### `POST /api/summary/plan/selected`
+
+Recibe el mismo cuerpo que `/api/plan/selected`, calcula el plan con ese mismo universo y llama a `resumen.resumir_plan`. Devuelve `{"texto": "...", "fuente": "gemini" | "template"}`. Gemini solo explica los números ya calculados. El texto se registra para que el botón Listen use la ruta existente `/api/listen`; no hay otro flujo de audio ni recordatorios automáticos.

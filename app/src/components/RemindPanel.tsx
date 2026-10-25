@@ -117,7 +117,8 @@ export default function RemindPanel({ result }: Props) {
       </summary>
       <div className="optional-panel-body">
       <p className="remind-intro">
-        {t("In {days} days we'll message you on WhatsApp to review this plan with fresh numbers.", { days })}
+        {t(days === 1 ? "In 1 day we'll message you on WhatsApp to review this plan with fresh numbers."
+          : "In {days} days we'll message you on WhatsApp to review this plan with fresh numbers.", { days })}
         {' '}{t("If you don't open it, we give you a short call.")}
       </p>
       {!status ? (
@@ -130,7 +131,7 @@ export default function RemindPanel({ result }: Props) {
             <span>{t("I agree to one WhatsApp message and, if I don't open it, one phone call about this reminder.")}</span>
           </label>
           <button type="submit" className="remind-button" disabled={pending || !consent || phone.trim().length < 8}>
-            {pending ? t('Saving…') : t('Remind me in {days} days', { days })}
+            {pending ? t('Saving…') : t(days === 1 ? 'Remind me in 1 day' : 'Remind me in {days} days', { days })}
           </button>
         </form>
       ) : (
@@ -146,7 +147,8 @@ export default function RemindPanel({ result }: Props) {
           {status.estado === 'error' && <p className="field-error" role="alert">{t('We could not send it:')} {status.error}</p>}
           {status.demo && !status.enviado_en && (
             <button type="button" className="remind-button secondary" onClick={() => void sendNow()} disabled={pending}>
-              {pending ? <><LoaderCircle size={16} aria-hidden="true" /> {t('Sending…')}</> : t('Demo: skip the {days} days and send it now', { days })}
+              {pending ? <><LoaderCircle size={16} aria-hidden="true" /> {t('Sending…')}</> : t(days === 1
+                ? 'Demo: skip 1 day and send it now' : 'Demo: skip the {days} days and send it now', { days })}
             </button>
           )}
         </div>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
 import { ArrowDown, ArrowRight, ArrowUpRight, BookOpen, Check, CheckCheck, ChevronDown, Clock3, HelpCircle, Menu, MonitorSmartphone, ShieldCheck, SlidersHorizontal, X } from 'lucide-react'
-import { DEFAULT_NOTICE } from '../../config'
+import { DEFAULT_HORIZON_DAYS, DEFAULT_NOTICE, HORIZON_RANGE } from '../../config'
 import { useI18n } from '../../i18n/I18nContext'
 import AppearanceControls from '../../components/AppearanceControls'
 import AssetLogo from '../../components/AssetLogo'
@@ -161,7 +161,11 @@ export default function LandingPage({ onStart }: Props) {
                 <div className="landing-phone-brand"><strong>horizon.</strong><Menu size={17} /></div>
                 <span className="landing-phone-step">{t('YOUR STARTING POINT')}</span><strong className="landing-phone-title">{t('Your plan')}</strong><p>{t('Let’s make it yours.')}</p>
                 <span className="landing-phone-label">{t('How much would you invest?')}</span><div className="landing-phone-amount"><span>$</span><strong>{new Intl.NumberFormat(locale).format(1000)}</strong><small>USD</small></div>
-                <span className="landing-phone-label">{t('Your time horizon')}</span><div className="landing-phone-days"><span>{t('{days}d', { days: 7 })}</span><strong>{t('{days}d', { days: 30 })}</strong><span>{t('{days}d', { days: 90 })}</span><span>{t('{days}d', { days: 180 })}</span></div>
+                <span className="landing-phone-label">{t('Your time horizon')}</span>
+                <div className="landing-phone-duration"><strong>{t('{days} days', { days: DEFAULT_HORIZON_DAYS })}</strong>
+                  <div className="landing-phone-duration-track"><span /></div>
+                  <div className="landing-phone-duration-endpoints"><span>{t('1 day')}</span><span>{t('{days} days', { days: HORIZON_RANGE.max })}</span></div>
+                </div>
                 <span className="landing-phone-label">{t('Your comfort with risk')}</span><div className="landing-phone-risk"><SlidersHorizontal size={17} /><span>{t('Moderate')}</span><span className="landing-phone-radio" /></div>
                 <div className="landing-phone-submit">{t('See my plan')}<ArrowRight size={15} /></div><span className="landing-phone-footnote">{t('No account or payment required.')}</span>
               </div>

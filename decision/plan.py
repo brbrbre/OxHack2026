@@ -42,13 +42,15 @@ def _razon_principal(r: dict) -> str:
     return extra[-1] if extra else r["razones"][0]
 
 
-def _pesos(seleccion: list[dict]) -> list[float]:
+def _pesos(seleccion: list[dict], *, tope_por_activo: float = TOPE_POR_ACTIVO) -> list[float]:
     """Peso ∝ 1/volatilidad, con tope por activo.
 
     Reparto por llenado: los que llegan al tope se quedan fijos ahí y el
     exceso se reparte solo entre los demás. Si hay menos de 3 activos, el
     tope no deja llegar a 100 % y el resto queda en efectivo.
     """
+    if not math.isfinite(tope_por_activo) or not 0 < tope_por_activo <= 1:
+        raise ValueError("The asset weight limit must be greater than 0 and no more than 1.")
     inv = np.array([1 / max(s["volatilidad"], 1e-6) for s in seleccion])
     w = np.zeros(len(inv))
     fijos = np.zeros(len(inv), dtype=bool)
@@ -58,12 +60,12 @@ def _pesos(seleccion: list[dict]) -> list[float]:
         if not libres.any() or resto <= 1e-12:
             break
         propuesta = resto * inv[libres] / inv[libres].sum()
-        sobre = propuesta > TOPE_POR_ACTIVO + 1e-12
+        sobre = propuesta > tope_por_activo + 1e-12
         if not sobre.any():
             w[libres] = propuesta
             break
         idx = np.flatnonzero(libres)[sobre]
-        w[idx] = TOPE_POR_ACTIVO
+        w[idx] = tope_por_activo
         fijos[idx] = True
         resto = 1.0 - w[fijos].sum()
     return [float(x) for x in w]
@@ -89,9 +91,14 @@ def riesgo_cartera(pesos: list[float], simbolos: list[str], precios: dict[str, p
 
 def plan(monto: float, plazo_dias: int, perfil: str, grupos: dict[str, list[str]],
          precios: dict[str, pd.Series], nombres: dict[str, str], predecir,
-         hoy: date | None = None) -> dict:
+         hoy: date | None = None, *, tope_por_activo: float = TOPE_POR_ACTIVO,
+         respetar_fracciones: bool = False) -> dict:
     """grupos: {"ETFs": ["SPY", ...], ...} solo con los tipos que eligió la persona.
-    predecir(simbolo, precios) -> dict con el contrato de model.predict()."""
+    predecir(simbolo, precios) -> dict con el contrato de model.predict().
+    El plan por tipos conserva el tope de 40 %. La ruta independiente de activos
+    elegidos pasa un tope de 100 % y respeta las fracciones individuales,
+    sin cambiar elegibilidad ni riesgo. Los valores por defecto conservan el
+    comportamiento del plan automático."""
     hoy = hoy or date.today()
     tol = PEOR_CASO_ACEPTABLE[perfil]
     filas = []
@@ -132,12 +139,19 @@ def plan(monto: float, plazo_dias: int, perfil: str, grupos: dict[str, list[str]
             fuera[f["simbolo"]] = f"The plan holds up to {MAX_ACTIVOS} assets."
 
     if seleccion:
-        w = _pesos(seleccion)
+        w = _pesos(seleccion, tope_por_activo=tope_por_activo)
         sims = [f["simbolo"] for f in seleccion]
         mu, sigma, peor = riesgo_cartera(w, sims, precios, [f["rendimiento_esperado"] for f in seleccion], plazo_dias)
         escala = 1.0 if peor >= 0 else min(1.0, tol / -peor)
     else:
         w, mu, sigma, peor, escala = [], 0.0, 0.0, 0.0, 0.0
+
+    if respetar_fracciones and seleccion:
+        # Levantar el tope de concentración no debe anular los frenos de riesgo,
+        # tendencia o eventos. Escalamos toda la cartera sin alterar proporciones
+        # ni volver a repartir la diferencia: esta queda en efectivo.
+        limites = [f["fraccion"] / wi for f, wi in zip(seleccion, w) if wi > 0]
+        escala = max(0.0, min(1.0, escala, *limites))
 
     cartera = [{
         "simbolo": f["simbolo"], "nombre": f["nombre"], "grupo": f["grupo"],

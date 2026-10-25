@@ -72,14 +72,21 @@ describe('multiple asset selection', () => {
 })
 
 describe('manual asset budget explanation', () => {
-  it('makes the equal comparison split clear instead of presenting it as portfolio optimization', () => {
+  it('explains a plan restricted to the selected assets without promising equal amounts', () => {
     const html = renderToStaticMarkup(createElement(SelectedAssetsSplit, { count: 2, amount: '1000' }))
-    expect(html).toContain('About $500 per asset')
-    expect(html).toContain('Your $1,000 budget is split equally across 2 assets for comparison, not an optimized allocation.')
+    expect(html).toContain('Selected assets: 2')
+    expect(html).toContain('Horizon will build a plan using only your selected assets. Amounts may differ, and some money may stay in cash.')
+    expect(html).not.toContain('split equally')
+    expect(html).not.toContain('per asset')
   })
 
-  it.each([{ count: 1, amount: '1000' }, { count: 0, amount: '1000' }, { count: 2, amount: '' },
-    { count: 2, amount: '0' }, { count: 2, amount: 'invalid' }])('only explains a valid shared budget: %j', (props) => {
+  it.each([{ count: 1, amount: '1000' }, { count: 0, amount: '1000' }])('keeps the single-asset experience unchanged: %j', (props) => {
     expect(renderToStaticMarkup(createElement(SelectedAssetsSplit, props))).toBe('')
+  })
+
+  it.each(['', '0', 'invalid'])('explains the selected plan before a valid budget is entered: %s', (amount) => {
+    const html = renderToStaticMarkup(createElement(SelectedAssetsSplit, { count: 2, amount }))
+    expect(html).toContain('Selected assets: 2')
+    expect(html).not.toContain('NaN')
   })
 })

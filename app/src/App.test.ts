@@ -46,7 +46,9 @@ describe('first visit', () => {
     expect(html).toContain('id="investment-form"')
     expect(input(html, 'amount')).toContain('value="500"')
     expect(html).toContain('Getting your options ready')
-    expect(input(html, 'horizon', '90')).toContain('checked=""')
+    expect(input(html, 'horizon', '90')).toContain('type="hidden"')
+    expect(html).toContain('This plan keeps its original 90-day duration.')
+    expect(html).not.toContain('type="range"')
     expect(input(html, 'risk', 'agresivo')).toContain('checked=""')
     expect(html).toContain('Get my answer')
     expect(html).not.toContain('outlook-heading')
@@ -54,11 +56,20 @@ describe('first visit', () => {
   })
 
   it('keeps invalid reminder values out of the form while preserving valid defaults', async () => {
-    const html = await renderReminderLink('?simbolo=SPY&monto=-5&plazo=45&perfil=yolo')
+    const html = await renderReminderLink('?simbolo=SPY&monto=-5&plazo=61&perfil=yolo')
     expect(input(html, 'amount')).toContain('value="1000"')
-    expect(input(html, 'horizon', '30')).toContain('checked=""')
+    expect(input(html, 'horizon', '30')).toContain('type="range"')
     expect(input(html, 'risk', 'moderado')).toContain('checked=""')
     expect(html).not.toContain('value="-5"')
     expect(html).not.toContain('value="yolo"')
+  })
+
+  it('opens an arbitrary 37-day link in the slider with its supplied budget and profile intact', async () => {
+    const html = await renderReminderLink('?simbolo=SPY&monto=500&plazo=37&perfil=agresivo')
+    expect(html).not.toContain('id="entry-heading"')
+    expect(input(html, 'amount')).toContain('value="500"')
+    expect(input(html, 'horizon', '37')).toContain('type="range"')
+    expect(input(html, 'horizon', '37')).toContain('min="1" max="60" step="1"')
+    expect(input(html, 'risk', 'agresivo')).toContain('checked=""')
   })
 })

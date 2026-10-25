@@ -12,7 +12,20 @@ describe('reminder link', () => {
 
   it('ignores missing or invalid values', () => {
     expect(planFromSearch('', base)).toEqual(base)
-    expect(planFromSearch('?monto=-5&plazo=45&perfil=yolo', base)).toEqual(base)
+    expect(planFromSearch('?monto=-5&plazo=61&perfil=yolo', base)).toEqual(base)
+  })
+
+  it.each([1, 37, 60])('restores an arbitrary supported %s-day plan from a new link', (days) => {
+    expect(planFromSearch('?simbolo=AAPL&monto=500&plazo=' + days + '&perfil=agresivo', base))
+      .toEqual({ ...base, simbolo: 'AAPL', monto: '500', plazo_dias: days, perfil: 'agresivo' })
+  })
+
+  it.each([90, 180, 365])('preserves the exact historical %s-day reminder duration', (days) => {
+    expect(planFromSearch('?simbolo=SPY&plazo=' + days, base).plazo_dias).toBe(days)
+  })
+
+  it.each(['0', '-1', '1.5', '61', '89', '181', 'Infinity', 'text'])('rejects unsupported duration %s', (days) => {
+    expect(planFromSearch('?plazo=' + days, base).plazo_dias).toBe(base.plazo_dias)
   })
 })
 

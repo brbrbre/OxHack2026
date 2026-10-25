@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import type { AssetsResponse } from '../api/types'
-import { useCurrency } from '../currency/CurrencyContext'
 import { useI18n } from '../i18n/I18nContext'
 import AssetLogo from './AssetLogo'
 import AssetPicker from './AssetPicker'
@@ -23,14 +22,12 @@ export function selectedDraftSymbols(draft: { simbolo: string; simbolos?: string
   return uniqueAssetSymbols(draft.simbolos ?? [draft.simbolo])
 }
 
-export function SelectedAssetsSplit({ count, amount }: { count: number; amount: string }) {
-  const { money } = useCurrency()
+export function SelectedAssetsSplit({ count }: { count: number; amount: string }) {
   const { t } = useI18n()
-  const budget = Number(amount)
-  if (count < 2 || !Number.isFinite(budget) || budget <= 0) return null
+  if (count < 2) return null
   return <p className="selected-assets-split" role="note">
-    <strong>{t('About {amount} per asset', { amount: money(budget / count) })}</strong>
-    <span>{t('Your {budget} budget is split equally across {count} assets for comparison, not an optimized allocation.', { budget: money(budget), count })}</span>
+    <strong>{t('Selected assets: {count}', { count })}</strong>
+    <span>{t('Horizon will build a plan using only your selected assets. Amounts may differ, and some money may stay in cash.')}</span>
   </p>
 }
 

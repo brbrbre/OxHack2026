@@ -95,9 +95,11 @@
 .landing-page .landing-phone-amount > span { font-size: 17px; color: var(--ink-2); }
 .landing-page .landing-phone-amount > strong { font-size: 24px; font-weight: 600; }
 .landing-page .landing-phone-amount > small { margin-left: auto; color: var(--ink-2); font-size: 12px; }
-.landing-page .landing-phone-days { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 8px; font-size: 12px; text-align: center; }
-.landing-page .landing-phone-days > * { padding: 10px 5px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink-2); font-weight: 400; }
-.landing-page .landing-phone-days > strong { border-color: var(--accent); background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.landing-page .landing-phone-duration { margin-top: 8px; }
+.landing-page .landing-phone-duration > strong { color: var(--accent); font-size: 20px; font-weight: 600; }
+.landing-page .landing-phone-duration-track { position: relative; height: 5px; margin: 15px 0 12px; border-radius: 8px; background: linear-gradient(to right, var(--accent) 49.15%, var(--line) 49.15%); }
+.landing-page .landing-phone-duration-track > span { position: absolute; top: 50%; left: 49.15%; width: 18px; height: 18px; border: 3px solid var(--surface); border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1px var(--accent); transform: translate(-50%, -50%); }
+.landing-page .landing-phone-duration-endpoints { display: flex; justify-content: space-between; gap: 12px; color: var(--ink-2); font-size: 11px; }
 .landing-page .landing-phone-risk { display: flex; align-items: center; gap: 8px; padding: 13px 10px; margin-top: 8px; border: 1px solid var(--accent); border-radius: 4px; background: var(--accent-soft); color: var(--ink); font-size: 13px; font-weight: 500; }
 .landing-page .landing-phone-radio { width: 13px; height: 13px; margin-left: auto; border: 4px solid var(--accent); border-radius: 50%; background: var(--surface); }
 .landing-page .landing-phone-submit { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 43px; margin-top: 23px; border-radius: 4px; background: var(--accent); color: var(--on-accent); font-size: 13px; font-weight: 500; }

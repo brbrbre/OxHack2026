@@ -23,13 +23,14 @@ describe('appearance preferences and introduction', () => {
     expect(html).toContain('Language')
   })
 
-  it('never delays a planner or reminder link and shows the intro only once per session', () => {
-    const unseen = { getItem: () => null }
-    expect(shouldShowIntro('', unseen)).toBe(true)
-    expect(shouldShowIntro('', { getItem: () => '1' })).toBe(false)
-    expect(shouldShowIntro('?simbolo=SPY&monto=500', unseen)).toBe(false)
-    expect(shouldShowIntro('?view=planner', unseen)).toBe(false)
-    expect(shouldShowIntro('', { getItem: () => { throw new Error('Storage blocked') } })).toBe(true)
+  it('shows the intro on every home or planner load while opening reminders directly', () => {
+    expect(shouldShowIntro('')).toBe(true)
+    expect(shouldShowIntro('')).toBe(true)
+    expect(shouldShowIntro('?view=home')).toBe(true)
+    expect(shouldShowIntro('?view=planner')).toBe(true)
+    expect(shouldShowIntro('?simbolo=SPY&monto=500')).toBe(false)
+    expect(shouldShowIntro('?view=planner&simbolo=SPY&monto=500')).toBe(false)
+    expect(shouldShowIntro('?recordatorio=abcdefghijkl')).toBe(false)
   })
 
   it('provides a skip action without presenting an invented loading state', () => {

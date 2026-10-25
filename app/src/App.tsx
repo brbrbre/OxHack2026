@@ -18,8 +18,9 @@ import ErrorMessage from './components/ErrorMessage'
 import SummaryBlock from './components/SummaryBlock'
 import AskPanel from './components/AskPanel'
 import RemindPanel from './components/RemindPanel'
-import SelectedAssetResults from './components/SelectedAssetResults'
-import { analyzeSelectedAssets, selectedSymbols, splitSelectedBudget } from './lib/selectedAssets'
+import { selectedSymbols } from './lib/selectedAssets'
+import { selectedPlanApi } from './selected-plan/client'
+import SelectedPlanNotice from './selected-plan/SelectedPlanNotice'
 import { useCurrency } from './currency/CurrencyContext'
 import { useI18n } from './i18n/I18nContext'
 import AppearanceControls from './components/AppearanceControls'
@@ -51,8 +52,6 @@ export default function App({ active = true, onHome }: AppProps = {}) {
   const [pricesError, setPricesError] = useState<string | null>(null)
   const [pricesAttempt, setPricesAttempt] = useState(0)
   const [result, setResult] = useState<DecideResponse | null>(null)
-  const [selectionResults, setSelectionResults] = useState<DecideResponse[]>([])
-  const [inspecting, setInspecting] = useState(false)
   const [assetInspection, setAssetInspection] = useState<AssetInspection | null>(null)
   const wasShowingAssetDialog = useRef(false)
   const [portfolio, setPortfolio] = useState<PlanResponse | null>(null)
@@ -71,7 +70,8 @@ export default function App({ active = true, onHome }: AppProps = {}) {
   const showWorkspace = hasOpenedResults && !guidedOpen && experience !== null
   const symbols = selectedSymbols(draft)
   const multiple = mode === 'asset' && symbols.length > 1
-  const priceSymbol = multiple && result ? result.simbolo : draft.simbolo
+  const usesPortfolio = mode === 'plan' || multiple
+  const priceSymbol = draft.simbolo
 
   useEffect(() => {
     const reminder = reminderFromSearch(currentSearch())
@@ -104,7 +104,7 @@ export default function App({ active = true, onHome }: AppProps = {}) {
   }, [assetsAttempt])
 
   useEffect(() => {
-    if (!active || !assets || mode !== 'asset' || !showWorkspace || !priceSymbol) return
+    if (!active || !assets || usesPortfolio || !showWorkspace || !priceSymbol) return
     const controller = new AbortController()
     setPrices(null)
     setPricesPending(true)
@@ -117,7 +117,7 @@ export default function App({ active = true, onHome }: AppProps = {}) {
       if (!controller.signal.aborted) setPricesPending(false)
     })
     return () => controller.abort()
-  }, [assets, priceSymbol, pricesAttempt, mode, showWorkspace, active])
+  }, [assets, priceSymbol, pricesAttempt, usesPortfolio, showWorkspace, active])
 
   useEffect(() => () => {
     decisionController.current?.abort()
@@ -129,16 +129,16 @@ export default function App({ active = true, onHome }: AppProps = {}) {
     // The dialog restores focus to its opener; do not move it to an answer on close.
     if (wasShowingAssetDialog.current) { wasShowingAssetDialog.current = false; return }
     if (!active || !showWorkspace || (!deciding && !result && !portfolio && !decideError)) return
-    const heading = document.getElementById(multiple && inspecting ? 'selected-asset-heading' : 'outlook-heading')
+    const heading = document.getElementById('outlook-heading')
     heading?.focus({ preventScroll: true })
-    const target = multiple && inspecting ? heading?.closest('section') : heading?.closest('.results-column') ?? heading?.closest('section')
+    const target = heading?.closest('.results-column') ?? heading?.closest('section')
     const top = target?.getBoundingClientRect().top ?? 0
     // The answer must be on screen: always on phones, and on laptops when the
     // person scrolled down to the button and the answer sits above the fold.
     if (window.matchMedia('(max-width: 760px)').matches || top < 0 || top > window.innerHeight / 2) {
       target?.scrollIntoView({ behavior: 'instant', block: 'start' })
     }
-  }, [deciding, result, portfolio, decideError, showWorkspace, active, multiple, inspecting, assetInspection])
+  }, [deciding, result, portfolio, decideError, showWorkspace, active, assetInspection])
 
   useEffect(() => {
     if (!active) setAssetInspection(null)
@@ -158,8 +158,6 @@ export default function App({ active = true, onHome }: AppProps = {}) {
     setSummary(null)
     setSummaryPending(false)
     setResult(null)
-    setSelectionResults([])
-    setInspecting(false)
     setAssetInspection(null)
     setPortfolio(null)
     setDecideError(null)
@@ -218,9 +216,9 @@ export default function App({ active = true, onHome }: AppProps = {}) {
       setTypesError(t('Choose at least one asset type.'))
       return
     }
-    if (mode === 'asset') {
-      try { splitSelectedBudget(amount, symbols) }
-      catch (error) { setDecideError(t((error as Error).message)); return }
+    if (mode === 'asset' && symbols.length === 0) {
+      setDecideError(t('Choose at least one asset.'))
+      return
     }
     decisionController.current?.abort()
     const controller = new AbortController()
@@ -229,10 +227,8 @@ export default function App({ active = true, onHome }: AppProps = {}) {
     setSummary(null)
     setSummaryPending(false)
     setDeciding(true)
-    setInspecting(false)
     setAssetInspection(null)
     setResult(null)
-    setSelectionResults([])
     setPortfolio(null)
     setDecideError(null)
     setTypesError(null)
@@ -248,14 +244,13 @@ export default function App({ active = true, onHome }: AppProps = {}) {
           loadSummary('plan', body)
         }
       } else if (multiple) {
-        const responses = await analyzeSelectedAssets(symbols, request, controller.signal)
+        const body = { ...request, simbolos: symbols }
+        const response = await selectedPlanApi.plan(body, controller.signal)
         if (!controller.signal.aborted) {
-          setSelectionResults(responses)
-          setResult(responses[0])
+          setPortfolio(response)
           setHasOpenedResults(true)
           setGuidedOpen(false)
-          const first = responses[0]
-          loadSummary('decide', { ...request, monto: first.numeros.monto, simbolo: first.simbolo })
+          loadSummaryFrom((signal) => selectedPlanApi.summary(body, signal))
         }
       } else {
         const body = { ...request, simbolo: draft.simbolo }
@@ -280,10 +275,14 @@ export default function App({ active = true, onHome }: AppProps = {}) {
 
   // The summary arrives after the answer; if it fails, the answer stays and the block disappears.
   function loadSummary(kind: 'decide' | 'plan', body: Parameters<typeof api.summary>[1]) {
+    loadSummaryFrom((signal) => api.summary(kind, body, signal))
+  }
+
+  function loadSummaryFrom(load: (signal: AbortSignal) => Promise<SummaryResponse>) {
     const controller = new AbortController()
     summaryController.current = controller
     setSummaryPending(true)
-    api.summary(kind, body, controller.signal).then((response) => {
+    load(controller.signal).then((response) => {
       if (!controller.signal.aborted) setSummary(response)
     }).catch(() => {
       if (!controller.signal.aborted) setSummary(null)
@@ -295,18 +294,6 @@ export default function App({ active = true, onHome }: AppProps = {}) {
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     void analyze()
-  }
-
-  function inspectSelection(next: DecideResponse) {
-    setAssetInspection({ symbol: next.simbolo, name: next.nombre, amount: next.numeros.monto,
-      days: next.numeros.plazo_dias, profile: next.numeros.perfil, basis: 'comparison', analysis: next })
-    if (next.simbolo === result?.simbolo) return
-    setInspecting(true)
-    summaryController.current?.abort()
-    setSummary(null)
-    setResult(next)
-    loadSummary('decide', { simbolo: next.simbolo, monto: next.numeros.monto,
-      plazo_dias: next.numeros.plazo_dias, perfil: next.numeros.perfil })
   }
 
   const selectedAsset = assets && Object.values(assets).flat().find((asset) => asset.simbolo === priceSymbol)
@@ -331,7 +318,7 @@ export default function App({ active = true, onHome }: AppProps = {}) {
         {showWorkspace && <section className="page-intro" aria-labelledby="page-title">
           <div>
             <h1 id="page-title">{t('Invest now, wait, or not yet?')}</h1>
-            <p>{t("Choose investments and how long you'll hold them. Explore an answer for each one or let Horizon compare investment types.")}</p>
+            <p>{t("Choose investments and how long you'll hold them. Build a plan from your selected assets or explore investment types.")}</p>
           </div>
         </section>}
 
@@ -370,28 +357,25 @@ export default function App({ active = true, onHome }: AppProps = {}) {
           {showWorkspace && <div className="results-column">
             <div className="results-toolbar"><a href="#planner">{t('Edit your plan')} <ArrowDown size={14} aria-hidden="true" /></a></div>
             {locale !== 'en' && <p className="model-language-note" role="note">{t('Model explanations, summaries and spoken amounts are currently supplied in English.')}</p>}
-            {mode === 'plan'
-              ? <PlanResult result={portfolio} pending={deciding} error={decideError} onRetry={() => void analyze()}
-                onInspect={setAssetInspection} />
-              : multiple ? <>
-                <SelectedAssetResults results={selectionResults} budget={Number(draft.monto)} selectedSymbol={result?.simbolo}
-                  pending={deciding} error={decideError} onRetry={() => void analyze()} onSelect={inspectSelection} />
-                {result && <DecisionCard result={result} pending={false} error={null} headingId="selected-asset-heading"
-                  onRetry={() => void analyze()} isDemo={USE_MOCKS} />}
+            {usesPortfolio
+              ? <>
+                {multiple && <SelectedPlanNotice />}
+                <PlanResult result={portfolio} pending={deciding} error={decideError} onRetry={() => void analyze()}
+                  onInspect={setAssetInspection} />
               </> : <DecisionCard result={result} pending={deciding} error={decideError}
                 onRetry={() => void analyze()} isDemo={USE_MOCKS} />}
-            {active && mode === 'asset' && (!multiple || result) && <Suspense fallback={<section className="chart-panel chart-state" role="status">{t('Loading the price chart…')}</section>}>
+            {active && !usesPortfolio && <Suspense fallback={<section className="chart-panel chart-state" role="status">{t('Loading the price chart…')}</section>}>
             <PriceChart prices={prices} symbol={priceSymbol} name={selectedAsset?.nombre ?? t('Price history')}
               pending={pricesPending} error={pricesError ?? (assetsError ? t('Choose an asset once the asset list is available.') : null)}
               onRetry={() => assetsError ? setAssetsAttempt((attempt) => attempt + 1) : setPricesAttempt((attempt) => attempt + 1)}
               isDemo={USE_MOCKS} result={result} />
             </Suspense>}
             {active && <SummaryBlock summary={summary} pending={summaryPending} />}
-            <AskPanel result={mode === 'asset' ? result : null} plan={mode === 'plan' ? portfolio : null} />
-            {mode === 'asset' && <RemindPanel result={result} />}
+            <AskPanel result={usesPortfolio ? null : result} plan={usesPortfolio ? portfolio : null} />
+            {!usesPortfolio && <RemindPanel result={result} />}
             <footer className="notice-bar">
               <Info size={15} aria-hidden="true" />
-              <p>{t((mode === 'plan' ? portfolio?.aviso : result?.aviso) ?? DEFAULT_NOTICE)}</p>
+              <p>{t((usesPortfolio ? portfolio?.aviso : result?.aviso) ?? DEFAULT_NOTICE)}</p>
             </footer>
           </div>}
         </div>

@@ -30,6 +30,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from api import baseline
+from api.selected_plan import SelectedPlanRequest, build_selected_plan
 from data.assets import ASSETS, all_symbols
 from data.fetch import get_close, is_crypto
 from decision.plan import plan as armar_plan
@@ -185,6 +186,16 @@ def plan_route(req: PlanRequest):
     return {**r, "modelo": nombre_modelo, "aviso": AVISO}
 
 
+@app.post("/api/plan/selected")
+def selected_plan_route(req: SelectedPlanRequest):
+    """Mismo motor del plan, solo entre los activos elegidos y con concentración permitida."""
+    try:
+        return build_selected_plan(req, catalog=ASSETS, get_close=get_close, run_prediction=run_prediction,
+                                   load_model=load_model, notice=AVISO, hoy=date.today())
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
 # --- Resumen (Gemini) y audio (ElevenLabs): solo redactan y leen, nunca deciden ---
 
 @app.post("/api/summary/decide")
@@ -195,6 +206,11 @@ def summary_decide(req: DecideRequest):
 @app.post("/api/summary/plan")
 def summary_plan(req: PlanRequest):
     return resumen.resumir_plan(plan_route(req))
+
+
+@app.post("/api/summary/plan/selected")
+def summary_selected_plan(req: SelectedPlanRequest):
+    return resumen.resumir_plan(selected_plan_route(req))
 
 
 class ListenRequest(BaseModel):

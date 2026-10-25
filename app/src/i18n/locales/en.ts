@@ -464,6 +464,37 @@ const messages: Messages = {
   "The estimates below assume the full {amount} is invested for {days} days.": "The estimates below assume the full {amount} is invested for {days} days.",
   "Investment period": "Investment period",
 
+  // Investment duration
+  "1 day": "1 day",
+  "Saved duration": "Saved duration",
+  "This plan keeps its original {days}-day duration.": "This plan keeps its original {days}-day duration.",
+  "Choose a duration from 1 to 60 days": "Choose a duration from 1 to 60 days",
+  "Drag to choose any duration from 1 to 60 days.": "Drag to choose any duration from 1 to 60 days.",
+
+  // Singular one-day periods
+  "The gain and loss estimates below use the full {amount} over 1 day, not just the suggested {suggested}.": "The gain and loss estimates below use the full {amount} over 1 day, not just the suggested {suggested}.",
+  "The estimates below assume the full {amount} is invested for 1 day.": "The estimates below assume the full {amount} is invested for 1 day.",
+  "Estimated range on your full {amount} over 1 day.": "Estimated range on your full {amount} over 1 day.",
+  "Typical move in 1 day:": "Typical move in 1 day:",
+  "In 1 day we'll message you on WhatsApp to review this plan with fresh numbers.": "In 1 day we'll message you on WhatsApp to review this plan with fresh numbers.",
+  "Remind me in 1 day": "Remind me in 1 day",
+  "Demo: skip 1 day and send it now": "Demo: skip 1 day and send it now",
+  "Initial value {amount}. Expected value {expected} after 1 day. Values in {currency}.": "Initial value {amount}. Expected value {expected} after 1 day. Values in {currency}.",
+
+  // Plans restricted to selected assets
+  "Selected assets: {count}": "Selected assets: {count}",
+  "Horizon will build a plan using only your selected assets. Amounts may differ, and some money may stay in cash.": "Horizon will build a plan using only your selected assets. Amounts may differ, and some money may stay in cash.",
+  "Plan for your selected assets": "Plan for your selected assets",
+  "This plan only considers the assets you picked. A single holding may use up to 100% of the budget, subject to your risk profile.": "This plan only considers the assets you picked. A single holding may use up to 100% of the budget, subject to your risk profile.",
+  "Some money may stay in cash.": "Some money may stay in cash.",
+  "The selected investment plan did not match your request. Please try again.": "The selected investment plan did not match your request. Please try again.",
+  "This feature needs the updated server. Ask the team to deploy the selected-assets API.": "This feature needs the updated server. Ask the team to deploy the selected-assets API.",
+
+  "Choose investments and how long you'll hold them. Build a plan from your selected assets or explore investment types.": "Choose investments and how long you'll hold them. Build a plan from your selected assets or explore investment types.",
+  "Comparing your choices and building your plan…": "Comparing your choices and building your plan…",
+
+  "Adjust your choices, then build your plan again.": "Adjust your choices, then build your plan again.",
+
   // Frontend service errors
   "Something went wrong. Please try again.": "Something went wrong. Please try again.",
   "The service is temporarily unavailable. Please try again shortly.": "The service is temporarily unavailable. Please try again shortly.",

@@ -1,11 +1,11 @@
 import { ArrowRight, CircleHelp, LoaderCircle, ShieldCheck, SlidersHorizontal, Zap } from 'lucide-react'
 import type { FormEvent } from 'react'
 import type { AssetsResponse, RiskProfile } from '../api/types'
-import { HORIZONS } from '../config'
 import { DECISION_LABELS, PROFILE_LABELS } from '../lib/labels'
 import CurrencyAmountInput from '../currency/CurrencyAmountInput'
 import { useI18n } from '../i18n/I18nContext'
 import SelectedAssetsPicker, { SelectedAssetsSplit, selectedDraftSymbols } from './SelectedAssetsPicker'
+import HorizonSlider from './HorizonSlider'
 
 export interface PlanDraft {
   simbolo: string
@@ -80,16 +80,7 @@ export default function InvestmentForm({ assets, draft, onChange, onSubmit, pend
 
         <fieldset className="field field-horizon">
           <legend>{t('What is your time horizon?')}</legend>
-          <div className="horizon-options">
-            {HORIZONS.map((days) => (
-              <label className={'horizon-option' + (draft.plazo_dias === days ? ' selected' : '')} key={days}>
-                <input type="radio" name="horizon" value={days} checked={draft.plazo_dias === days}
-                  onChange={() => onChange({ ...draft, plazo_dias: days })} />
-                <span aria-hidden="true">{days}<small>{t('d')}</small></span><span className="sr-only">{t('{days} days', { days })}</span>
-              </label>
-            ))}
-          </div>
-          <span className="field-hint">{t('How long you plan to stay invested')}</span>
+          <HorizonSlider value={draft.plazo_dias} onChange={(plazo_dias) => onChange({ ...draft, plazo_dias })} />
         </fieldset>
 
         <fieldset className="field risk-field">

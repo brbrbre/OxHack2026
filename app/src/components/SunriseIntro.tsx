@@ -1,13 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { useI18n } from '../i18n/I18nContext'
 
-export const INTRO_STORAGE_KEY = 'horizon-introduction-seen'
-
-export function shouldShowIntro(search: string, storage?: Pick<Storage, 'getItem'>): boolean {
+export function shouldShowIntro(search: string): boolean {
   const query = new URLSearchParams(search)
-  if (query.has('simbolo') || query.get('view') === 'planner') return false
-  try { return storage?.getItem(INTRO_STORAGE_KEY) !== '1' }
-  catch { return true }
+  return !query.has('simbolo') && !query.has('recordatorio')
 }
 
 export default function SunriseIntro({ onComplete }: { onComplete: () => void }) {

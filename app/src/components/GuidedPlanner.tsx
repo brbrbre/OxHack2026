@@ -2,20 +2,17 @@ import { useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { ArrowLeft, ArrowRight, LoaderCircle } from 'lucide-react'
 import type { AssetsResponse } from '../api/types'
-import { HORIZONS } from '../config'
 import { useCurrency } from '../currency/CurrencyContext'
 import CurrencyAmountInput from '../currency/CurrencyAmountInput'
 import { useI18n } from '../i18n/I18nContext'
 import { PROFILE_LABELS } from '../lib/labels'
 import SelectedAssetsPicker, { SelectedAssetsSplit, selectedDraftSymbols } from './SelectedAssetsPicker'
 import type { PlanDraft, PlannerMode } from './InvestmentForm'
+import HorizonSlider, { horizonLabel } from './HorizonSlider'
 
 export type GuidedStep = 0 | 1 | 2 | 3
 
 const steps = ['Budget', 'Time', 'Risk', 'Review'] as const
-export const guidedHorizons: Record<number, string> = {
-  7: 'A week', 30: 'A month', 90: '3 months', 180: '6 months', 365: 'A year',
-}
 
 const riskChoices = [
   { value: 'conservador', label: 'I prefer smaller ups and downs' },
@@ -105,13 +102,7 @@ export default function GuidedPlanner({ assets, draft, onChange, mode, onModeCha
         </div>}
         {step === 1 && <fieldset className="field">
           <legend className="sr-only">{t('How long would you leave it invested?')}</legend>
-          <div className="horizon-options guided-time-options">
-            {HORIZONS.map((days) => <label key={days} className={'horizon-option' + (draft.plazo_dias === days ? ' selected' : '')}>
-              <input type="radio" name="horizon" value={days} checked={draft.plazo_dias === days}
-                onChange={() => onChange({ ...draft, plazo_dias: days })} />
-              <span>{t(guidedHorizons[days])}</span>
-            </label>)}
-          </div>
+          <HorizonSlider value={draft.plazo_dias} onChange={(plazo_dias) => onChange({ ...draft, plazo_dias })} />
         </fieldset>}
         {step === 2 && <fieldset className="field">
           <legend className="sr-only">{t('Your comfort with risk')}</legend>
@@ -127,7 +118,7 @@ export default function GuidedPlanner({ assets, draft, onChange, mode, onModeCha
           <div className="guided-review">
             <dl>
               <div><dt>{t('Budget')}</dt><dd>{money(Number(draft.monto))}</dd></div>
-              <div><dt>{t('Time invested')}</dt><dd>{t(guidedHorizons[draft.plazo_dias])} ({t('{days} days', { days: draft.plazo_dias })})</dd></div>
+              <div><dt>{t('Time invested')}</dt><dd>{horizonLabel(draft.plazo_dias, t)}</dd></div>
               <div><dt>{t('Comfort with risk')}</dt><dd>{t(PROFILE_LABELS[draft.perfil])}</dd></div>
             </dl>
           </div>
