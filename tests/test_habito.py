@@ -36,6 +36,9 @@ class Enviar:
         self.llamadas.append((tel, url, texto))
         return "CA1"
 
+    def colgar(self, sid, estado):
+        self.colgadas = getattr(self, "colgadas", []) + [sid]
+
     def estado_mensaje(self, sid):
         return self.estado_del_mensaje
 
@@ -71,9 +74,61 @@ def test_plantilla_de_espera_y_de_plan():
 def test_gemini_solo_si_trae_link_y_activo():
     rec = {"nombre": "Walmart de México", "decision": "ESPERAR", "plazo_dias": 180, "sugerido": 579.0, "monto": 1000.0}
     bueno = "Hi! Your wait on Walmart de México is over. Today: invest $800. Review: http://x/r/abc"
-    assert mensajes.whatsapp(rec, _hoy(), "http://x/r/abc", llamar=lambda h: bueno) == (bueno, "gemini")
+    assert mensajes.whatsapp(rec, _hoy(), "http://x/r/abc", llamar=lambda h: bueno) == (
+        "Hi! Your wait on Walmart de México is over. Today: invest $800. Review:\n\nhttp://x/r/abc", "gemini")
     assert mensajes.whatsapp(rec, _hoy(), "http://x/r/abc", llamar=lambda h: "Hi! Walmart de México is great.")[1] == "template"
     assert mensajes.whatsapp(rec, _hoy(), "http://x/r/abc", llamar=lambda h: "Review http://x/r/abc")[1] == "template"
+
+
+def test_el_link_va_solo_en_la_ultima_linea():
+    assert mensajes.link_aparte("Check it here: http://x/r/a", "http://x/r/a") == "Check it here:\n\nhttp://x/r/a"
+    assert mensajes.link_aparte("Open http://x/r/a to review.", "http://x/r/a") == "Open\n\nhttp://x/r/a\nto review"
+    rec = {"nombre": "Walmart de México", "decision": "ESPERAR", "plazo_dias": 180, "sugerido": 579.0, "monto": 1000.0}
+    texto, _ = mensajes.whatsapp(rec, _hoy(), "http://x/r/abc", llamar=lambda h: None)
+    assert texto.endswith("\n\nhttp://x/r/abc")
+
+
+def test_si_abre_mientras_se_prepara_la_llamada_no_llama(conn, monkeypatch):
+    monkeypatch.setenv("HABITO_ESPERA_MIN", "0")
+    rec = _rec(conn)
+    almacen.actualizar(conn, rec["token"], estado="enviado", enviado_en=almacen.iso(T0))
+    env = Enviar()
+
+    class VozQueAbre:  # mientras ElevenLabs genera el audio, la persona abre el link
+        def audio(self, texto):
+            almacen.actualizar(conn, rec["token"], abierto_en=almacen.iso(T0))
+            return b"ID3"
+
+    assert ciclo.procesar(conn, T0, lambda r: _hoy(), enviar=env, voz=VozQueAbre())["llamadas"] == 0
+    assert env.llamadas == []
+
+
+def test_si_abre_con_la_llamada_en_curso_se_cuelga(conn):
+    rec = _rec(conn)
+    almacen.actualizar(conn, rec["token"], estado="llamando", llamada_sid="CA7", llamada_estado="ringing")
+    colgadas = []
+    ciclo.abrir(conn, almacen.obtener(conn, rec["token"]), T0, colgar=lambda sid, e: colgadas.append((sid, e)))
+    r = almacen.obtener(conn, rec["token"])
+    assert colgadas == [("CA7", "ringing")] and r["estado"] == "abierto" and r["llamada_estado"] == "canceled"
+    ciclo.abrir(conn, r, T0, colgar=lambda sid, e: colgadas.append(sid))  # abrir dos veces no cuelga dos veces
+    assert len(colgadas) == 1
+
+
+def test_si_abre_justo_cuando_sale_la_llamada_se_corta(conn, monkeypatch):
+    monkeypatch.setenv("HABITO_ESPERA_MIN", "0")
+    rec = _rec(conn)
+    almacen.actualizar(conn, rec["token"], estado="enviado", enviado_en=almacen.iso(T0))
+    env = Enviar()
+    original = env.llamar
+
+    def llamar_y_abrir(tel, url, texto):
+        almacen.actualizar(conn, rec["token"], abierto_en=almacen.iso(T0), estado="abierto")
+        return original(tel, url, texto)
+
+    env.llamar = llamar_y_abrir
+    ciclo.procesar(conn, T0, lambda r: _hoy(), enviar=env)
+    r = almacen.obtener(conn, rec["token"])
+    assert env.colgadas == ["CA1"] and r["estado"] == "abierto" and r["llamada_estado"] == "canceled"
 
 
 def test_ciclo_manda_whatsapp_y_llama_si_no_abre(conn, monkeypatch):

@@ -1,6 +1,14 @@
 # Devpost submission (draft)
 
-Paste each section into its Devpost field. Prizes to tick: HRT "Best Use of Data for Predictions and Decision Making", Gemini, ElevenLabs, Tiger Data and Vultr. [TODO: confirm at the 9:00 Devpost workshop how to opt into each prize.]
+Paste each section into its Devpost field. In the form's prize step, tick these five, with the names Devpost uses:
+
+- [HRT] Best Use of Data for Predictions and Decision Making
+- [MLH] Best Use of Gemini API
+- [MLH] Best Use of ElevenLabs
+- [MLH] Best Use of Tiger Data
+- [MLH] Best Use of Vultr
+
+First Place and Runner Up are general prizes. Ask at the 9:00 workshop if they need a tick too.
 
 ## Name
 

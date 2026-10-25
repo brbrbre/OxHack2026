@@ -71,6 +71,15 @@ def mensaje(telefono: str, texto: str) -> str:
         return sms(telefono, texto)
 
 
+def colgar(sid: str, ultimo_estado: str | None) -> None:
+    """Corta la llamada: "canceled" si aún no contestan, "completed" si ya está en curso."""
+    primero = "completed" if ultimo_estado == "in-progress" else "canceled"
+    try:
+        _post(f"Calls/{sid}", {"Status": primero})
+    except RuntimeError:
+        _post(f"Calls/{sid}", {"Status": "completed" if primero == "canceled" else "canceled"})
+
+
 def llamar(telefono: str, audio_url: str | None, texto: str) -> str:
     """Llama y reproduce el MP3 de ElevenLabs; si no hay audio, Twilio lee el texto."""
     cuerpo = f"<Play>{escape(audio_url)}</Play>" if audio_url else f"<Say>{escape(texto)}</Say>"

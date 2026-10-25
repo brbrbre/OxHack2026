@@ -315,9 +315,7 @@ def habit_open(token: str):
     rec = habito_db.obtener(conn, token)
     if not rec:
         return RedirectResponse("/")
-    if not rec["abierto_en"]:
-        habito_db.actualizar(conn, token, abierto_en=habito_db.iso(habito_db.ahora()),
-                             estado="abierto" if rec["estado"] == "enviado" else rec["estado"])
+    habito_ciclo.abrir(conn, rec, habito_db.ahora())
     q = urlencode({"simbolo": rec["simbolo"], "monto": int(rec["monto"]), "plazo": rec["plazo_dias"], "perfil": rec["perfil"]})
     return RedirectResponse(f"/?{q}")
 
