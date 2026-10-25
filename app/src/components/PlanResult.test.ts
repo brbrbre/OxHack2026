@@ -62,6 +62,21 @@ describe('portfolio plan presentation', () => {
     expect(html).not.toContain('(-7.1%)')
   })
 
+  it('keeps the Invest reasons open and puts the other decision lists behind native labelled disclosures', () => {
+    const html = render(planFixtures.sample)
+    const groups = Array.from(html.matchAll(/<details\b[^>]*class="plan-classification ([^"]+)"[^>]*>[\s\S]*?<\/details>/g),
+      ([markup, tone]) => ({ markup, tone }))
+    expect(groups.map(({ tone }) => tone)).toEqual(['invest', 'wait', 'not-now'])
+    for (const { markup, tone } of groups) {
+      const opening = markup.match(/^<details\b[^>]*>/)![0]
+      const summary = markup.match(/<summary\b[^>]*>([\s\S]*?)<\/summary>/)![1]
+      expect(opening.includes('open=""')).toBe(tone === 'invest')
+      expect(summary).toContain('id="plan-' + tone + '-heading"')
+      expect(summary).toContain('class="decision-badge ' + tone + '"')
+      expect(summary).toContain('class="classification-count"')
+    }
+  })
+
   it('keeps each API candidate in its supplied decision group and preserves its reason', () => {
     const html = render(planFixtures.sample)
     for (const { tone, heading, label, assets } of [
@@ -69,7 +84,7 @@ describe('portfolio plan presentation', () => {
       { tone: 'wait', heading: 'plan-wait-heading', label: 'Wait', assets: planFixtures.sample.esperar },
       { tone: 'not-now', heading: 'plan-not-now-heading', label: 'Not now', assets: planFixtures.sample.no_por_ahora },
     ]) {
-      const group = html.split('<section class="plan-classification ' + tone + '"')[1].split('</section>')[0]
+      const group = html.split('<details class="plan-classification ' + tone + '"')[1].split('</details>')[0]
       expect(group).toContain('aria-labelledby="' + heading + '"')
       expect(group).toContain('class="decision-badge ' + tone + '"')
       expect(group).toContain('aria-hidden="true"')
@@ -89,6 +104,9 @@ describe('portfolio plan presentation', () => {
     result.invertir = [...result.invertir.map((asset) => ({ ...asset, fuera_del_plan: held.has(asset.simbolo) ? null : asset.fuera_del_plan })), extra]
     const html = render(result)
     expect(html).toContain('Not in the plan: ' + text(extra.fuera_del_plan))
+    const investGroup = html.split('<details class="plan-classification invest"')[1].split('</details>')[0]
+    expect(investGroup.split('>')[0]).toContain('open=""')
+    expect(investGroup).toContain('Not in the plan: ' + text(extra.fuera_del_plan))
     const inPlan = result.invertir.filter((asset) => !asset.fuera_del_plan).length
     expect(inPlan).toBe(result.cartera.length)
     expect(html).toContain(result.invertir.length + ' assets, ' + result.cartera.length + ' in the plan')

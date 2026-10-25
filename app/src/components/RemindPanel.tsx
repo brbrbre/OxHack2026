@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { BellRing, Check, LoaderCircle, X } from 'lucide-react'
+import { BellRing, Check, ChevronDown, LoaderCircle, X } from 'lucide-react'
 import { api } from '../api/client'
 import { errorMessage } from '../api/errors'
 import type { DecideResponse, HabitStatus } from '../api/types'
@@ -19,11 +19,22 @@ export default function RemindPanel({ result }: Props) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const poll = useRef<number | null>(null)
+  const request = useRef<AbortController | null>(null)
+
+  function stopPolling() {
+    if (poll.current !== null) window.clearInterval(poll.current)
+    poll.current = null
+  }
 
   useEffect(() => {
     setStatus(null)
+    setPlanned(null)
+    setPending(false)
     setError(null)
-    return () => { if (poll.current) window.clearInterval(poll.current) }
+    return () => {
+      request.current?.abort()
+      stopPolling()
+    }
   }, [result])
 
   if (!result) return null
@@ -33,49 +44,77 @@ export default function RemindPanel({ result }: Props) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!result || pending) return
+    const current = new AbortController()
+    request.current?.abort()
+    request.current = current
+    stopPolling()
     setPending(true)
     setError(null)
     try {
       const saved = await api.remind({
         telefono: phone.trim(), consentimiento: consent, simbolo: result.simbolo,
         monto: result.numeros.monto, plazo_dias: days, perfil: result.numeros.perfil,
-      })
+      }, current.signal)
+      if (current.signal.aborted) return
       setPlanned(saved.vence)
       setStatus(saved)
     } catch (err) {
-      setError(errorMessage(err))
+      if (!current.signal.aborted) setError(errorMessage(err))
     } finally {
-      setPending(false)
+      if (!current.signal.aborted) setPending(false)
     }
   }
 
   async function sendNow() {
     if (!status || pending) return
+    const current = new AbortController()
+    request.current?.abort()
+    request.current = current
+    stopPolling()
     setPending(true)
     setError(null)
     try {
-      setStatus(await api.habitNow(status.token))
-      if (poll.current) window.clearInterval(poll.current)
+      const saved = await api.habitNow(status.token, current.signal)
+      if (current.signal.aborted) return
+      setStatus(saved)
+      if (habitSettled(saved)) return
       const started = Date.now()
+      let reading = false
       poll.current = window.setInterval(async () => {
+        if (current.signal.aborted || Date.now() - started >= 10 * 60_000) {
+          stopPolling()
+          return
+        }
+        if (reading) return
+        reading = true
         try {
-          const next = await api.habitStatus(status.token)
+          const next = await api.habitStatus(status.token, current.signal)
+          if (current.signal.aborted) return
           setStatus(next)
-          if (habitSettled(next) || Date.now() - started > 10 * 60_000) {
-            if (poll.current) window.clearInterval(poll.current)
+          if (habitSettled(next) || Date.now() - started >= 10 * 60_000) {
+            stopPolling()
           }
-        } catch { /* keep the last known state */ }
+        } catch {
+          if (current.signal.aborted || Date.now() - started >= 10 * 60_000) stopPolling()
+          // Keep the last known state when a status request fails.
+        } finally {
+          reading = false
+        }
       }, 4000)
     } catch (err) {
-      setError(errorMessage(err))
+      if (!current.signal.aborted) setError(errorMessage(err))
     } finally {
-      setPending(false)
+      if (!current.signal.aborted) setPending(false)
     }
   }
 
   return (
-    <section className="remind-panel" aria-labelledby="remind-heading">
-      <h3 id="remind-heading"><BellRing size={18} aria-hidden="true" /> Make it a habit</h3>
+    <details className="remind-panel optional-panel" aria-labelledby="remind-heading">
+      <summary className="optional-panel-summary">
+        <h3 id="remind-heading"><BellRing size={18} aria-hidden="true" /> Make it a habit</h3>
+        <ChevronDown className="optional-panel-chevron" size={16} aria-hidden="true" />
+      </summary>
+      <div className="optional-panel-body">
       <p className="remind-intro">
         {waiting
           ? `We'll tell you on WhatsApp when the ${days}-day waiting period ends, with that day's answer.`
@@ -114,6 +153,7 @@ export default function RemindPanel({ result }: Props) {
         </div>
       )}
       {error && <p className="field-error" role="alert">{error}</p>}
-    </section>
+      </div>
+    </details>
   )
 }
