@@ -191,3 +191,23 @@ def test_canal_sms_directo(monkeypatch):
     monkeypatch.setattr(twilio, "whatsapp", lambda t, x: pytest.fail("no debe usar WhatsApp"))
     monkeypatch.setattr(twilio, "sms", lambda t, x: "SM2")
     assert twilio.mensaje("+15550100123", "hola") == "SM2"
+
+
+def test_telefono_de_la_llamada(monkeypatch):
+    mx_whatsapp, mx_voz = f"+{ciclo.PAIS_MEXICO}14421234567", f"+{ciclo.PAIS_MEXICO}4421234567"
+    assert ciclo.telefono_llamada(mx_whatsapp) == mx_voz
+    assert ciclo.telefono_llamada("+15550100123") == "+15550100123"
+    monkeypatch.setenv("HABITO_LLAMADA_A", f"{mx_whatsapp}=+15550100999, +15550100123 = +15550100777")
+    assert ciclo.telefono_llamada(mx_whatsapp) == "+15550100999"
+    assert ciclo.telefono_llamada("+15550100123") == "+15550100777"
+
+
+def test_la_llamada_usa_el_otro_numero(conn, monkeypatch):
+    monkeypatch.setenv("HABITO_ESPERA_MIN", "0")
+    monkeypatch.setenv("HABITO_LLAMADA_A", "+15550100123=+15550100999")
+    _rec(conn)
+    env = Enviar()
+    vence = T0 + timedelta(days=180)
+    ciclo.procesar(conn, vence, lambda r: _hoy(), enviar=env)
+    ciclo.procesar(conn, vence, lambda r: _hoy(), enviar=env)
+    assert env.llamadas[0][0] == "+15550100999"
