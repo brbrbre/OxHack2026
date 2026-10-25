@@ -32,6 +32,25 @@ describe('investment planner modes', () => {
     expect(html).toContain('type="submit" disabled=""')
   })
 
+  it.each([1, 37, 60])('uses a continuous one-day-step slider at %s days in the quick form', (days) => {
+    const html = renderToStaticMarkup(createElement(InvestmentForm, { ...props, mode: 'asset',
+      draft: { ...props.draft, plazo_dias: days } }))
+    const horizon = Array.from(html.matchAll(/<input\b[^>]*>/g), ([match]) => match)
+      .find((markup) => markup.includes('name="horizon"'))
+    expect(horizon).toContain('type="range"')
+    expect(horizon).toContain('min="1" max="60" step="1"')
+    expect(horizon).toContain('value="' + days + '"')
+    expect(horizon).toContain('aria-valuetext="' + days + (days === 1 ? ' day"' : ' days"'))
+  })
+
+  it('keeps a saved longer horizon exact until the user chooses to replace it', () => {
+    const html = renderToStaticMarkup(createElement(InvestmentForm, { ...props, mode: 'asset' }))
+    expect(html).toContain('Saved duration')
+    expect(html).toContain('type="hidden" name="horizon" value="90"')
+    expect(html).toContain('Choose a duration from 1 to 60 days')
+    expect(html).not.toContain('type="range"')
+  })
+
   it('keeps the legacy single asset selected while allowing more assets to be added', () => {
     const html = renderToStaticMarkup(createElement(InvestmentForm, { ...props, mode: 'asset' }))
     expect(html).toContain('I have assets in mind')
@@ -45,15 +64,16 @@ describe('investment planner modes', () => {
     expect(html).not.toContain('id="asset-types"')
   })
 
-  it('explains an equal budget split before submitting multiple selected assets', () => {
+  it('explains the selected-only plan before submitting multiple assets', () => {
     const html = renderToStaticMarkup(createElement(InvestmentForm, {
       ...props, mode: 'asset', draft: { ...props.draft, simbolos: ['SPY', 'GLD'] },
     }))
     expect(html).toContain('name="selected-assets" value="SPY"')
     expect(html).toContain('name="selected-assets" value="GLD"')
-    expect(html).toContain('About $2,500 per asset')
-    expect(html).toContain('Your $5,000 budget is split equally across 2 assets for comparison, not an optimized allocation.')
-    expect(html.indexOf('About $2,500 per asset')).toBeLessThan(html.indexOf('type="submit"'))
+    expect(html).toContain('Selected assets: 2')
+    expect(html).toContain('Horizon will build a plan using only your selected assets. Amounts may differ, and some money may stay in cash.')
+    expect(html.indexOf('Selected assets: 2')).toBeLessThan(html.indexOf('type="submit"'))
+    expect(html).not.toContain('split equally')
     expect(html).not.toContain('type="submit" disabled=""')
   })
 

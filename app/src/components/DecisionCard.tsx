@@ -26,6 +26,7 @@ export default function DecisionCard({ result, pending, error, onRetry, headingI
   const { t, percentage } = useI18n()
   const appearance = result ? appearances[result.decision] : null
   const numbers = result?.numeros
+  const oneDay = numbers?.plazo_dias === 1
   // Keep the whole-dollar headline without rounding USD before FX conversion.
   const wholeDollars = currency === 'USD' && numbers && numbers.monto >= 1
   const budget = numbers ? wholeDollars ? Math.round(numbers.monto) : numbers.monto : 0
@@ -82,15 +83,17 @@ export default function DecisionCard({ result, pending, error, onRetry, headingI
                 <span className="asset-name-copy"><span>{result.nombre}</span><small>{result.simbolo}</small></span>
               </dd></div>
               <div><dt>{t('Budget')}</dt><dd>{money(result.numeros.monto)}</dd></div>
-              <div><dt>{t('Investment period')}</dt><dd>{t('{days} days', { days: result.numeros.plazo_dias })}</dd></div>
+              <div><dt>{t('Investment period')}</dt><dd>{oneDay ? t('1 day') : t('{days} days', { days: result.numeros.plazo_dias })}</dd></div>
               <div><dt>{t('Risk profile')}</dt><dd>{t(PROFILE_LABELS[result.numeros.perfil])}</dd></div>
             </dl>
             <div className="reasons">
               <h3>{t('Here is the thinking')}</h3>
               <p className="decision-estimate-basis">{partial
-                ? t('The gain and loss estimates below use the full {amount} over {days} days, not just the suggested {suggested}.', {
+                ? t(oneDay ? 'The gain and loss estimates below use the full {amount} over 1 day, not just the suggested {suggested}.'
+                  : 'The gain and loss estimates below use the full {amount} over {days} days, not just the suggested {suggested}.', {
                   amount: money(numbers.monto), days: numbers.plazo_dias, suggested: money(suggested),
-                }) : t('The estimates below assume the full {amount} is invested for {days} days.', {
+                }) : t(oneDay ? 'The estimates below assume the full {amount} is invested for 1 day.'
+                  : 'The estimates below assume the full {amount} is invested for {days} days.', {
                   amount: money(numbers.monto), days: numbers.plazo_dias,
                 })}</p>
               {currency !== 'USD' && <p className="field-hint currency-explanation-note">{t('Written explanations use USD; the amounts above use {currency}.', { currency })}</p>}
@@ -112,12 +115,14 @@ export default function DecisionCard({ result, pending, error, onRetry, headingI
                 <div className="range-value upside"><span><ArrowUpRight size={14} aria-hidden="true" /> {t('Best case estimate')}</span>
                   <strong>{money(result.numeros.mejor_caso, true)}</strong></div>
               </div>
-              <p>{t('Estimated range on your full {amount} over {days} days.', { amount: money(result.numeros.monto), days: result.numeros.plazo_dias })}</p>
+              <p>{t(oneDay ? 'Estimated range on your full {amount} over 1 day.' : 'Estimated range on your full {amount} over {days} days.', {
+                amount: money(result.numeros.monto), days: result.numeros.plazo_dias,
+              })}</p>
             </div>
             <div className="outlook-metrics">
               <div><span>{t('Expected return')}</span><strong>{percentage(result.numeros.rendimiento_esperado, true)}</strong></div>
               <div><span>{t('Chance of loss')}</span><strong>{percentage(result.numeros.prob_perdida)}</strong></div>
-              <div className="typical-move"><span>{t('Typical move in {days} days:', { days: result.numeros.plazo_dias })}</span>
+              <div className="typical-move"><span>{t(oneDay ? 'Typical move in 1 day:' : 'Typical move in {days} days:', { days: result.numeros.plazo_dias })}</span>
                 <strong>±{percentage(result.numeros.volatilidad)}</strong></div>
             </div>
             {result.numeros.eventos.length > 0 && (

@@ -10,7 +10,8 @@ function series(lastDate = '2026-10-23', days = 30) {
 
 describe('forecast calendar and API estimates', () => {
   it.each([
-    [7, '2026-10-30'], [30, '2026-11-22'], [90, '2027-01-21'],
+    [1, '2026-10-24'], [7, '2026-10-30'], [30, '2026-11-22'],
+    [37, '2026-11-29'], [60, '2026-12-22'], [90, '2027-01-21'],
     [180, '2027-04-21'], [365, '2027-10-23'],
   ])('places a %s-day forecast on %s using calendar days', (days, date) => {
     const { forecast, points } = series('2026-10-23', days)

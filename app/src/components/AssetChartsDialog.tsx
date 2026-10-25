@@ -158,7 +158,7 @@ export default function AssetChartsDialog({ selection, onClose }: Props) {
       <dl className="asset-charts-summary">
         <div><dt>{t(amountLabel)}</dt><dd>{money(amount)} <small>{currency}</small></dd></div>
         {basis === 'allocation' && weight !== undefined && <div><dt>{t('Of your plan')}</dt><dd>{percentage(weight)}</dd></div>}
-        <div><dt>{t('Time horizon')}</dt><dd>{t('{days} days', { days })}</dd></div>
+        <div><dt>{t('Time horizon')}</dt><dd>{days === 1 ? t('1 day') : t('{days} days', { days })}</dd></div>
       </dl>
       <div className="asset-charts-tabs" role="tablist" aria-label={t('Asset chart')}>
         <button ref={investmentTab} type="button" role="tab" id={id + '-investment-tab'}

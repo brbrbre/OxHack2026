@@ -464,6 +464,37 @@ const messages: Messages = {
   "The estimates below assume the full {amount} is invested for {days} days.": "下方估算假设将全部 {amount} 投资 {days} 天。",
   "Investment period": "投资期限",
 
+  // Investment duration
+  "1 day": "1天",
+  "Saved duration": "已保存的期限",
+  "This plan keeps its original {days}-day duration.": "此计划保留原来的{days}天期限。",
+  "Choose a duration from 1 to 60 days": "选择1至60天的期限",
+  "Drag to choose any duration from 1 to 60 days.": "拖动滑块选择1至60天内的任意期限。",
+
+  // Singular one-day periods
+  "The gain and loss estimates below use the full {amount} over 1 day, not just the suggested {suggested}.": "下方的收益与损失估算以全部{amount}投资1天为基础，并非仅按建议投入的{suggested}计算。",
+  "The estimates below assume the full {amount} is invested for 1 day.": "下方估算假设将全部{amount}投入1天。",
+  "Estimated range on your full {amount} over 1 day.": "全部{amount}投资1天的估算区间。",
+  "Typical move in 1 day:": "1天的典型波动：",
+  "In 1 day we'll message you on WhatsApp to review this plan with fresh numbers.": "1天后，我们会通过WhatsApp发送消息，用最新数据回顾此计划。",
+  "Remind me in 1 day": "1天后提醒我",
+  "Demo: skip 1 day and send it now": "演示：跳过1天，立即发送",
+  "Initial value {amount}. Expected value {expected} after 1 day. Values in {currency}.": "初始价值为{amount}，1天后的预期价值为{expected}。金额以{currency}计。",
+
+  // Plans restricted to selected assets
+  "Selected assets: {count}": "已选资产：{count}",
+  "Horizon will build a plan using only your selected assets. Amounts may differ, and some money may stay in cash.": "Horizon将只使用你选择的资产生成计划。各项分配金额可能不同，也可能保留一部分现金。",
+  "Plan for your selected assets": "所选资产的投资计划",
+  "This plan only considers the assets you picked. A single holding may use up to 100% of the budget, subject to your risk profile.": "此计划只考虑你选择的资产。根据你的风险偏好，单项持仓最多可占预算的100%。",
+  "Some money may stay in cash.": "一部分资金可能保留为现金。",
+  "The selected investment plan did not match your request. Please try again.": "所选资产的投资计划与你的请求不匹配，请重试。",
+  "This feature needs the updated server. Ask the team to deploy the selected-assets API.": "此功能需要更新后的服务器。请团队部署所选资产的API。",
+
+  "Choose investments and how long you'll hold them. Build a plan from your selected assets or explore investment types.": "选择投资标的和持有时间。用你选择的资产生成计划，或探索不同投资类别。",
+  "Comparing your choices and building your plan…": "正在比较你的选择并生成计划……",
+
+  "Adjust your choices, then build your plan again.": "调整你的选择，然后重新生成计划。",
+
   // Frontend service errors
   "Something went wrong. Please try again.": "出了点问题，请重试。",
   "The service is temporarily unavailable. Please try again shortly.": "服务暂时不可用，请稍后重试。",

@@ -9,6 +9,8 @@ export const FRONTEND_ERROR_MESSAGES: readonly string[] = [
   "The service returned prices for a different asset.",
   "The analysis did not match your plan. Please try again.",
   "The investment plan did not match your request. Please try again.",
+  "The selected investment plan did not match your request. Please try again.",
+  "This feature needs the updated server. Ask the team to deploy the selected-assets API.",
   "The service returned incomplete asset information. Please try again.",
   "The service returned incomplete price history. Please try again.",
   "The service returned incomplete analysis. Please try again.",

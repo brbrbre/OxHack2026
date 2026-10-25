@@ -58,7 +58,7 @@ describe('inspected investment value illustration', () => {
     expect(projection.points.at(-1)?.upper).toBe(amount + amount * 0.2)
   })
 
-  it.each([1, 7, 30, 90, 180, 365])('includes both endpoints for a valid %s-day horizon', (days) => {
+  it.each([1, 2, 7, 30, 37, 60, 90, 180, 365])('includes both endpoints for a valid %s-day horizon', (days) => {
     const projection = buildInvestmentProjection(example({ plazo_dias: days }))!
     expect(projection.points).toHaveLength(days + 1)
     expect(projection.points[0].day).toBe(0)

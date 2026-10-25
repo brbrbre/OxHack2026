@@ -144,7 +144,7 @@ describe('translated planner controls', () => {
     expect(quick).toContain(translate(locale, 'Your plan'))
     expect(quick).toContain(translate(locale, 'Get my answer'))
     expect(quick).toContain(translate(locale, 'Search name or symbol'))
-    expect(quick).toContain(translate(locale, 'About {amount} per asset', { amount: '$500' }))
+    expect(quick).toContain(translate(locale, 'Selected assets: {count}', { count: 2 }))
     expect(quick).toMatch(/name="risk"[^>]*value="moderado"/)
     expect(quick).toContain('name="selected-assets" value="SPY"')
     expect(quick).toContain('S&amp;P 500 (SPDR)')
@@ -187,8 +187,8 @@ describe('translated planner controls', () => {
     expect(t).toHaveBeenCalledExactlyOnceWith('The service returned incomplete price history. Please try again.')
     const html = localize('es-419', createElement(ErrorMessage, { message: 'Your plan' }))
     expect(html).toContain('<p>Your plan</p>')
-    expect(FRONTEND_ERROR_MESSAGES).toHaveLength(16)
-    expect(new Set(FRONTEND_ERROR_MESSAGES).size).toBe(16)
+    expect(FRONTEND_ERROR_MESSAGES).toHaveLength(18)
+    expect(new Set(FRONTEND_ERROR_MESSAGES).size).toBe(18)
     for (const { value: locale } of LOCALES) {
       for (const message of FRONTEND_ERROR_MESSAGES) expect(messages[locale][message]?.trim()).toBeTruthy()
     }

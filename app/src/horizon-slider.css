@@ -1,0 +1,19 @@
+.horizon-slider { min-width: 0; }
+.horizon-slider-readout { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+.horizon-slider-readout output, .horizon-slider-readout strong { display: block; color: var(--accent); font-size: 27px; font-weight: 600; letter-spacing: -.6px; line-height: 1.4; }
+.horizon-slider-readout > span { color: var(--ink-2); font-size: 12px; line-height: 1.6; }
+.horizon-slider-range { display: block; width: 100%; min-width: 0; height: 44px; padding: 0; margin: 5px 0 0; border: 0; background: transparent; cursor: pointer; appearance: none; -webkit-appearance: none; }
+.horizon-slider-range::-webkit-slider-runnable-track { height: 6px; border-radius: 8px; background: linear-gradient(to right, var(--accent) var(--horizon-progress), var(--line) var(--horizon-progress)); }
+.horizon-slider-range::-webkit-slider-thumb { box-sizing: border-box; width: 26px; height: 26px; margin-top: -10px; border: 4px solid var(--surface); border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1px var(--accent); appearance: none; -webkit-appearance: none; }
+.horizon-slider-range::-moz-range-track { height: 6px; border-radius: 8px; background: var(--line); }
+.horizon-slider-range::-moz-range-progress { height: 6px; border-radius: 8px; background: var(--accent); }
+.horizon-slider-range::-moz-range-thumb { box-sizing: border-box; width: 26px; height: 26px; border: 4px solid var(--surface); border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.horizon-slider-range:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 5px; }
+.horizon-slider-endpoints { display: flex; justify-content: space-between; gap: 16px; color: var(--ink-2); font-size: 12px; line-height: 1.6; }
+.horizon-slider-hint { margin-top: 9px; color: var(--ink-2); font-size: 12px; line-height: 1.7; }
+.horizon-saved { padding: 14px 16px; border-left: 2px solid var(--accent); background: var(--accent-soft); }
+.horizon-saved .horizon-slider-readout strong { font-size: 22px; }
+.horizon-change-saved { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 0; margin-top: 4px; border: 0; background: transparent; color: var(--accent); font-size: 13px; line-height: 1.6; text-align: left; text-decoration: underline; text-underline-offset: 4px; }
+.guided-form .horizon-slider-readout output { font-size: clamp(32px, 6vw, 42px); }
+.guided-form .horizon-slider-range { height: 52px; margin-top: 10px; }
+.guided-form .horizon-slider-hint { font-size: 13px; }

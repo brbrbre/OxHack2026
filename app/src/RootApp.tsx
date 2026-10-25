@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import LandingPage from './pages/landing/LandingPage'
 import InformationNotice from './components/InformationNotice'
-import SunriseIntro, { INTRO_STORAGE_KEY, shouldShowIntro } from './components/SunriseIntro'
+import SunriseIntro, { shouldShowIntro } from './components/SunriseIntro'
 import { useI18n } from './i18n/I18nContext'
 
 const Planner = lazy(() => import('./App'))
@@ -22,22 +22,18 @@ export default function RootApp() {
   const [page, setPage] = useState<Page>(currentPage)
   const [hasVisitedPlanner, setHasVisitedPlanner] = useState(() => currentPage() === 'planner')
   const previousPage = useRef(page)
-  const [showIntro, setShowIntro] = useState(() => {
-    if (typeof window === 'undefined' || currentPage() !== 'home') return false
-    try { return shouldShowIntro(window.location.search, window.sessionStorage) }
-    catch { return shouldShowIntro(window.location.search) }
-  })
+  const [showIntro, setShowIntro] = useState(() =>
+    typeof window !== 'undefined' && shouldShowIntro(window.location.search))
   const introShown = useRef(showIntro)
   const finishIntro = useCallback(() => {
-    try { window.sessionStorage.setItem(INTRO_STORAGE_KEY, '1') } catch { /* The introduction is optional. */ }
     setShowIntro(false)
   }, [])
   useEffect(() => {
     if (!showIntro && introShown.current) {
       introShown.current = false
-      document.getElementById('landing-title')?.focus({ preventScroll: true })
+      if (page === 'home') document.getElementById('landing-title')?.focus({ preventScroll: true })
     }
-  }, [showIntro])
+  }, [showIntro, page])
 
   useEffect(() => {
     function restorePage() {
@@ -80,7 +76,7 @@ export default function RootApp() {
       <Suspense fallback={<main className="page-content" style={{ paddingBlock: 64 }}>
         <p role="status">{t('Opening your planner…')}</p>
       </main>}>
-        <Planner active={page === 'planner'} onHome={() => navigate('home')} />
+        <Planner active={page === 'planner' && !showIntro} onHome={() => navigate('home')} />
       </Suspense>
     </div>}
     </div>

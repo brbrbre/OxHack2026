@@ -464,6 +464,37 @@ const messages: Messages = {
   "The estimates below assume the full {amount} is invested for {days} days.": "Les estimations ci-dessous supposent que la totalité des {amount} est investie pendant {days} jours.",
   "Investment period": "Durée d’investissement",
 
+  // Investment duration
+  "1 day": "1 jour",
+  "Saved duration": "Durée enregistrée",
+  "This plan keeps its original {days}-day duration.": "Ce projet conserve sa durée initiale de {days} jours.",
+  "Choose a duration from 1 to 60 days": "Choisir une durée de 1 à 60 jours",
+  "Drag to choose any duration from 1 to 60 days.": "Faites glisser pour choisir une durée entre 1 et 60 jours.",
+
+  // Singular one-day periods
+  "The gain and loss estimates below use the full {amount} over 1 day, not just the suggested {suggested}.": "Les estimations de gain et de perte ci-dessous portent sur la totalité de {amount} pendant 1 jour, et pas seulement sur le montant suggéré de {suggested}.",
+  "The estimates below assume the full {amount} is invested for 1 day.": "Les estimations ci-dessous supposent que la totalité de {amount} est investie pendant 1 jour.",
+  "Estimated range on your full {amount} over 1 day.": "Fourchette estimée sur la totalité de {amount} pendant 1 jour.",
+  "Typical move in 1 day:": "Variation habituelle sur 1 jour :",
+  "In 1 day we'll message you on WhatsApp to review this plan with fresh numbers.": "Dans 1 jour, nous vous écrirons sur WhatsApp pour revoir ce projet avec des données actualisées.",
+  "Remind me in 1 day": "Me le rappeler dans 1 jour",
+  "Demo: skip 1 day and send it now": "Démo : passer 1 jour et envoyer maintenant",
+  "Initial value {amount}. Expected value {expected} after 1 day. Values in {currency}.": "Valeur initiale : {amount}. Valeur attendue après 1 jour : {expected}. Montants en {currency}.",
+
+  // Plans restricted to selected assets
+  "Selected assets: {count}": "Actifs sélectionnés : {count}",
+  "Horizon will build a plan using only your selected assets. Amounts may differ, and some money may stay in cash.": "Horizon construira un plan avec uniquement les actifs que vous avez sélectionnés. Les montants peuvent différer et une partie de l’argent peut rester en liquidités.",
+  "Plan for your selected assets": "Plan pour vos actifs sélectionnés",
+  "This plan only considers the assets you picked. A single holding may use up to 100% of the budget, subject to your risk profile.": "Ce plan ne considère que les actifs choisis. Une seule position peut représenter jusqu’à 100 % du budget, selon votre profil de risque.",
+  "Some money may stay in cash.": "Une partie de l’argent peut rester en liquidités.",
+  "The selected investment plan did not match your request. Please try again.": "Le plan des actifs sélectionnés ne correspond pas à votre demande. Veuillez réessayer.",
+  "This feature needs the updated server. Ask the team to deploy the selected-assets API.": "Cette fonctionnalité nécessite un serveur mis à jour. Demandez à l’équipe de déployer l’API des actifs sélectionnés.",
+
+  "Choose investments and how long you'll hold them. Build a plan from your selected assets or explore investment types.": "Choisissez vos placements et leur durée de détention. Construisez un plan à partir des actifs sélectionnés ou explorez les catégories de placements.",
+  "Comparing your choices and building your plan…": "Comparaison de vos choix et construction de votre plan…",
+
+  "Adjust your choices, then build your plan again.": "Ajustez vos choix, puis générez à nouveau votre plan.",
+
   // Frontend service errors
   "Something went wrong. Please try again.": "Une erreur est survenue. Veuillez réessayer.",
   "The service is temporarily unavailable. Please try again shortly.": "Le service est temporairement indisponible. Réessayez dans un instant.",

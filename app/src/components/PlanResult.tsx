@@ -73,7 +73,7 @@ export default function PlanResult({ result, pending, error, onRetry, onInspect 
         <div className="outlook-placeholder loading-outlook" role="status">
           <LoaderCircle size={24} aria-hidden="true" />
           <h2 id="outlook-heading" tabIndex={-1}>{t('Checking…')}</h2>
-          <p>{t('Comparing the asset types you selected.')}</p>
+          <p>{t('Comparing your choices and building your plan…')}</p>
         </div>
       ) : error ? (
         <div className="outlook-placeholder error-outlook">
@@ -183,7 +183,7 @@ export default function PlanResult({ result, pending, error, onRetry, onInspect 
       ) : (
         <div className="outlook-placeholder">
           <h2 id="outlook-heading" tabIndex={-1}>{t('Ready to compare another plan?')}</h2>
-          <p>{t('Adjust your choices, then select Build my plan to compare your asset types again.')}</p>
+          <p>{t('Adjust your choices, then build your plan again.')}</p>
         </div>
       )}
     </section>

@@ -64,7 +64,9 @@ export default function ValueGrowthChart({ projection, title, basis, idPrefix, c
       </div>
       <span className="value-growth-day">{t('Day {day} of {days}', { day: point.day, days: projection.days })}</span>
     </div>
-    <div className="value-growth-plot" role="group" aria-label={t('Initial value {amount}. Expected value {expected} after {days} days. Values in {currency}.', {
+    <div className="value-growth-plot" role="group" aria-label={t(projection.days === 1
+      ? 'Initial value {amount}. Expected value {expected} after 1 day. Values in {currency}.'
+      : 'Initial value {amount}. Expected value {expected} after {days} days. Values in {currency}.', {
       amount: money(projection.amount), expected: money(projection.points.at(-1)!.value), days: projection.days, currency,
     })}>
       <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 600, height: compact ? 180 : 220 }}>

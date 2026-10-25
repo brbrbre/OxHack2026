@@ -147,3 +147,22 @@ The person asks Horizon to remind them about one asset or a whole "Help me choos
 Variables: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` (the Twilio number that calls), `TWILIO_WHATSAPP_FROM` (the sandbox number), `PUBLIC_URL`, `HABITO_PERMITIDOS` (defaults to `DEMO_PHONE`), `HABITO_LLAMADA_A` (`whatsapp=voice` pairs, to call a different number than the WhatsApp one; Mexican mobiles lose the 1 for dialling), `HABITO_ESPERA_MIN` (default 1440), `HABITO_DEMO`, `HABITO_CANAL=sms` (send SMS instead of WhatsApp), `HABITO_AUTO=1` (checks reminders every 20 s inside the API). Reminders live in `data/cache/habito.sqlite`, outside the repo, because they hold phone numbers.
 
 Demo limits: Twilio's WhatsApp sandbox only writes to numbers that joined it with "join ...". In real use, a message that opens a conversation needs a template approved by Meta.
+
+### `POST /api/plan/selected`
+
+An independent route that allocates the budget **only among the assets the person selected**. It does not change `/api/plan`: the automatic plan by asset type keeps its 40% cap per asset.
+
+```json
+{"simbolos": ["VOO", "GLD"], "monto": 1000, "plazo_dias": 30, "perfil": "moderado"}
+```
+
+- `simbolos` is a nonempty list of unique symbols from `/api/assets`. Do not send `tipos`: the server finds the groups for those symbols. The entire list is validated before prices are loaded or the model runs. Unknown symbol: 404; empty or duplicate selection: 400, with `{"error": "text"}`.
+- `monto` stays in USD and must be greater than 0 and no more than 1,000,000,000. `plazo_dias` accepts any integer from 1 to 730 calendar days. `perfil` keeps the same three codes and defaults to `moderado`.
+- The response has exactly the shape of `/api/plan`: `cartera`, `efectivo`, the three decision lists, `resumen`, `numeros`, `modelo` and `aviso`. The lists contain only the requested symbols; no other assets are added.
+- It reuses the same model and engine: only assets with decision `INVERTIR` can enter, near duplicates are skipped, at most 5 positions are held, and total risk is adjusted to the profile. Weights depend on volatility, not an equal split or Gemini.
+- **A separate, explicit concentration policy:** this route permits up to 100% of the budget in one asset. A 60/40 split, a single position or an all-cash plan are possible; no allocation is guaranteed. Risk controls can leave part of the budget uninvested. `peso` always refers to the full budget, and `invertido + efectivo = monto`.
+- The 100% cap does not override individual sizing brakes. No final weight exceeds the asset's `fraccion` from risk, trend or event rules. If a position must shrink, the whole portfolio is scaled while preserving proportions; the difference stays in cash without redistribution. For example, one eligible asset with `fraccion = 0.5` can receive at most 50% of the budget even though the concentration cap permits 100%. This protection belongs to the selected-asset route; `/api/plan` preserves its previous behavior.
+
+### `POST /api/summary/plan/selected`
+
+Takes the same body as `/api/plan/selected`, calculates the plan for that exact universe, and calls `resumen.resumir_plan`. Returns `{"texto": "...", "fuente": "gemini" | "template"}`. Gemini only explains numbers already calculated. The text is registered so Listen can use the existing `/api/listen` route; this adds no separate audio flow or automatic reminders.
