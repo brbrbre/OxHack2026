@@ -95,7 +95,8 @@ describe('localized result interfaces', () => {
 
 describe('result translation coverage and reminder state integrity', () => {
   it('covers every real Twilio label and preserves its done/missed/waiting state', () => {
-    const base: HabitStatus = { token: 'local-test', vence: '2026-11-24', estado: 'enviado', enviado_en: '2026-10-25',
+    const id = 'local-test'
+    const base: HabitStatus = { token: id, vence: '2026-11-24', estado: 'enviado', enviado_en: '2026-10-25',
       abierto_en: null, llamado_en: null, error: null, simbolo: 'SPY', plazo_dias: 30, demo: true }
     const cases: Partial<HabitStatus>[] = [
       { enviado_en: null, estado: 'pendiente' }, {}, { mensaje_estado: 'delivered' }, { mensaje_estado: 'undelivered' },
