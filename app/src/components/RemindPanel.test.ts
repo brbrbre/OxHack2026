@@ -36,13 +36,12 @@ describe('reminder entry', () => {
     expect(html).toContain('type="submit" class="remind-button" disabled=""')
   })
 
-  it.each(['invest', 'wait', 'notNow'] as const)('uses the submitted horizon for the %s reminder', (fixture) => {
+  it.each(['invest', 'wait', 'waitRisk', 'notNow'] as const)('uses the submitted horizon to review the %s plan', (fixture) => {
     const result = structuredClone(decisionFixtures[fixture])
     result.numeros.plazo_dias = 90
     const html = render(result)
     expect(html).toContain('Remind me in 90 days')
-    expect(html).toContain(fixture === 'invest'
-      ? 'In 90 days we&#x27;ll message you on WhatsApp to review this plan with fresh numbers.'
-      : 'We&#x27;ll tell you on WhatsApp when the 90-day waiting period ends, with that day&#x27;s answer.')
+    expect(html).toContain('In 90 days we&#x27;ll message you on WhatsApp to review this plan with fresh numbers.')
+    expect(html).not.toContain('waiting period')
   })
 })

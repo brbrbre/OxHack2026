@@ -4,7 +4,8 @@ import { BellRing, Check, ChevronDown, LoaderCircle, X } from 'lucide-react'
 import { api } from '../api/client'
 import { errorMessage } from '../api/errors'
 import type { DecideResponse, HabitStatus } from '../api/types'
-import { dateLabel } from '../lib/format'
+import { useI18n } from '../i18n/I18nContext'
+import { localizeKnownError } from '../i18n/errors'
 import { habitSettled, habitSteps } from '../lib/habitSteps'
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function RemindPanel({ result }: Props) {
+  const { t, dateLabel } = useI18n()
   const [phone, setPhone] = useState('')
   const [consent, setConsent] = useState(false)
   const [status, setStatus] = useState<HabitStatus | null>(null)
@@ -39,7 +41,6 @@ export default function RemindPanel({ result }: Props) {
 
   if (!result) return null
   const days = result.numeros.plazo_dias
-  const waiting = result.decision !== 'INVERTIR'
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -111,48 +112,46 @@ export default function RemindPanel({ result }: Props) {
   return (
     <details className="remind-panel optional-panel" aria-labelledby="remind-heading">
       <summary className="optional-panel-summary">
-        <h3 id="remind-heading"><BellRing size={18} aria-hidden="true" /> Make it a habit</h3>
+        <h3 id="remind-heading"><BellRing size={18} aria-hidden="true" /> {t('Make it a habit')}</h3>
         <ChevronDown className="optional-panel-chevron" size={16} aria-hidden="true" />
       </summary>
       <div className="optional-panel-body">
       <p className="remind-intro">
-        {waiting
-          ? `We'll tell you on WhatsApp when the ${days}-day waiting period ends, with that day's answer.`
-          : `In ${days} days we'll message you on WhatsApp to review this plan with fresh numbers.`}
-        {' '}If you don't open it, we give you a short call.
+        {t("In {days} days we'll message you on WhatsApp to review this plan with fresh numbers.", { days })}
+        {' '}{t("If you don't open it, we give you a short call.")}
       </p>
       {!status ? (
         <form className="remind-form" onSubmit={submit}>
-          <label htmlFor="remind-phone">Your WhatsApp number</label>
+          <label htmlFor="remind-phone">{t('Your WhatsApp number')}</label>
           <input id="remind-phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="+1 555 010 0123"
             value={phone} onChange={(event) => setPhone(event.target.value)} maxLength={20} />
           <label className="remind-consent">
             <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
-            <span>I agree to one WhatsApp message and, if I don't open it, one phone call about this reminder.</span>
+            <span>{t("I agree to one WhatsApp message and, if I don't open it, one phone call about this reminder.")}</span>
           </label>
           <button type="submit" className="remind-button" disabled={pending || !consent || phone.trim().length < 8}>
-            {pending ? 'Saving…' : `Remind me in ${days} days`}
+            {pending ? t('Saving…') : t('Remind me in {days} days', { days })}
           </button>
         </form>
       ) : (
         <div className="remind-status" aria-live="polite">
-          <p>Reminder set for <strong>{dateLabel((planned ?? status.vence).slice(0, 10), true)}</strong>.</p>
+          <p>{t('Reminder set for')} <strong>{dateLabel((planned ?? status.vence).slice(0, 10), true)}</strong>.</p>
           <ol className="remind-steps">
             {habitSteps(status).map((step) => <li key={step.key} className={step.state === 'waiting' ? '' : step.state}>
               {step.state === 'done' ? <Check size={16} aria-hidden="true" />
                 : step.state === 'missed' ? <X size={16} aria-hidden="true" /> : <span className="step-dot" aria-hidden="true" />}
-              {step.label}
+              {t(step.label)}
             </li>)}
           </ol>
-          {status.estado === 'error' && <p className="field-error" role="alert">We could not send it: {status.error}</p>}
+          {status.estado === 'error' && <p className="field-error" role="alert">{t('We could not send it:')} {status.error}</p>}
           {status.demo && !status.enviado_en && (
             <button type="button" className="remind-button secondary" onClick={() => void sendNow()} disabled={pending}>
-              {pending ? <><LoaderCircle size={16} aria-hidden="true" /> Sending…</> : `Demo: skip the ${days} days and send it now`}
+              {pending ? <><LoaderCircle size={16} aria-hidden="true" /> {t('Sending…')}</> : t('Demo: skip the {days} days and send it now', { days })}
             </button>
           )}
         </div>
       )}
-      {error && <p className="field-error" role="alert">{error}</p>}
+      {error && <p className="field-error" role="alert">{localizeKnownError(error, t)}</p>}
       </div>
     </details>
   )

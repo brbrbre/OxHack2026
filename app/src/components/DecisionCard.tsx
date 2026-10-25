@@ -1,6 +1,7 @@
 import { ArrowDownRight, ArrowUpRight, CalendarClock, Info, Lightbulb, LoaderCircle } from 'lucide-react'
 import type { DecideResponse } from '../api/types'
-import { money, percentage } from '../lib/format'
+import { useCurrency } from '../currency/CurrencyContext'
+import { useI18n } from '../i18n/I18nContext'
 import { DECISION_LABELS, PROFILE_LABELS } from '../lib/labels'
 import AssetLogo from './AssetLogo'
 import ErrorMessage from './ErrorMessage'
@@ -17,96 +18,119 @@ interface Props {
   error: string | null
   onRetry: () => void
   isDemo: boolean
+  headingId?: string
 }
 
-export default function DecisionCard({ result, pending, error, onRetry }: Props) {
+export default function DecisionCard({ result, pending, error, onRetry, headingId = 'outlook-heading' }: Props) {
+  const { money, currency } = useCurrency()
+  const { t, percentage } = useI18n()
   const appearance = result ? appearances[result.decision] : null
   const numbers = result?.numeros
-  // Whole units in the headline, like the recommendations ("Invest about $393").
-  const budget = numbers ? Math.round(numbers.monto) : 0
-  const now = numbers ? Math.min(Math.round(numbers.monto_sugerido), budget) : 0
+  // Keep the whole-dollar headline without rounding USD before FX conversion.
+  const wholeDollars = currency === 'USD' && numbers && numbers.monto >= 1
+  const budget = numbers ? wholeDollars ? Math.round(numbers.monto) : numbers.monto : 0
+  const suggested = numbers ? Math.min(numbers.monto_sugerido, numbers.monto) : 0
+  const uninvested = numbers ? Math.max(0, numbers.monto - suggested) : 0
+  const partial = suggested > 0 && uninvested > 0
+  const roundedNow = wholeDollars && suggested >= 1 ? Math.round(suggested) : suggested
+  // Do not round a positive amount to zero or make a partial amount look like the full budget.
+  const now = partial && roundedNow >= budget ? suggested : roundedNow
   const headline = numbers
-    ? now <= 0 ? 'Keep your ' + money(numbers.monto) + ' for now'
-      : now >= budget ? 'Invest the full ' + money(numbers.monto) + ' now'
-      : 'Invest ' + money(now) + ' now'
+    ? suggested <= 0 ? t('Keep your {amount} for now', { amount: money(budget) })
+      : result?.decision !== 'INVERTIR' ? t('Suggested now: {amount}', { amount: money(now) })
+      : !partial ? t('Invest the full {amount} now', { amount: money(budget) })
+      : t('Invest {amount} now', { amount: money(now) })
     : ''
   return (
     <section className="panel outlook-panel"
-      aria-labelledby="outlook-heading" aria-busy={pending}>
+      aria-labelledby={headingId} aria-busy={pending}>
       {result && <div className="panel-heading">
         <span className="model-badge">{result.modelo === 'baseline'
-          ? 'Prediction: baseline (3-year historical average)' : 'Prediction: ' + result.modelo}</span>
+          ? t('Prediction: baseline (3-year historical average)') : t('Prediction: {model}', { model: result.modelo })}</span>
       </div>}
       <div aria-live="polite" aria-atomic="true">
         {pending ? (
           <div className="outlook-placeholder loading-outlook" role="status">
             <LoaderCircle size={24} aria-hidden="true" />
-            <h2 id="outlook-heading" tabIndex={-1}>Checking…</h2>
-            <p>Estimating the amount and risk for your plan.</p>
+            <h2 id={headingId} tabIndex={-1}>{t('Checking…')}</h2>
+            <p>{t('Estimating the amount and risk for your plan.')}</p>
           </div>
         ) : error ? (
           <div className="outlook-placeholder error-outlook">
-            <h2 id="outlook-heading" tabIndex={-1}>We couldn't get your answer.</h2>
+            <h2 id={headingId} tabIndex={-1}>{t("We couldn't get your answer.")}</h2>
             <ErrorMessage message={error} onRetry={onRetry} />
           </div>
         ) : result && numbers && appearance ? (
           <>
             <div className="decision-heading">
-              <h2 id="outlook-heading" className="suggested-amount" tabIndex={-1}>{headline}</h2>
-              <span className={'decision-badge ' + appearance.className}>{DECISION_LABELS[result.decision]}</span>
+              <h2 id={headingId} className="suggested-amount" tabIndex={-1}>{headline}</h2>
+              <span className={'decision-badge ' + appearance.className}>{t(DECISION_LABELS[result.decision])}</span>
             </div>
-            {now > 0 && now < budget && <p className="allocation-breakdown">
-              <span>of your {money(numbers.monto)}</span>
-              <span>keep {money(budget - now)} for later</span>
-            </p>}
+            {result.decision === 'ESPERAR' && partial && <p className="decision-sizing-note">{t('A smaller starting amount; the rest stays uninvested.')}</p>}
+            {suggested <= 0 && <p className="decision-sizing-note">{t('No investment is suggested now. Your full budget stays uninvested.')}</p>}
+            <section className="decision-money-plan" aria-label={t('How your {amount} is split', { amount: money(numbers.monto) })}>
+              <h3>{t('How your {amount} is split', { amount: money(numbers.monto) })}</h3>
+              <dl className="decision-money-split">
+                <div><dt>{t('Suggested investment now')}</dt><dd>{money(suggested)}</dd></div>
+                <div><dt>{t('Keep uninvested for now')}</dt><dd>{money(uninvested)}</dd></div>
+              </dl>
+              <p>{t('These amounts come from your budget. They are not profits.')}</p>
+            </section>
             <dl className="plan-summary">
-              <div className="plan-summary-asset"><dt>Asset</dt><dd className="asset-name-row">
+              <div className="plan-summary-asset"><dt>{t('Asset')}</dt><dd className="asset-name-row">
                 <AssetLogo symbol={result.simbolo} size="small" />
                 <span className="asset-name-copy"><span>{result.nombre}</span><small>{result.simbolo}</small></span>
               </dd></div>
-              <div><dt>Budget</dt><dd>{money(result.numeros.monto)}</dd></div>
-              <div><dt>Horizon</dt><dd>{result.numeros.plazo_dias} days</dd></div>
-              <div><dt>Risk profile</dt><dd>{PROFILE_LABELS[result.numeros.perfil]}</dd></div>
+              <div><dt>{t('Budget')}</dt><dd>{money(result.numeros.monto)}</dd></div>
+              <div><dt>{t('Investment period')}</dt><dd>{t('{days} days', { days: result.numeros.plazo_dias })}</dd></div>
+              <div><dt>{t('Risk profile')}</dt><dd>{t(PROFILE_LABELS[result.numeros.perfil])}</dd></div>
             </dl>
             <div className="reasons">
-              <h3>Here is the thinking</h3>
+              <h3>{t('Here is the thinking')}</h3>
+              <p className="decision-estimate-basis">{partial
+                ? t('The gain and loss estimates below use the full {amount} over {days} days, not just the suggested {suggested}.', {
+                  amount: money(numbers.monto), days: numbers.plazo_dias, suggested: money(suggested),
+                }) : t('The estimates below assume the full {amount} is invested for {days} days.', {
+                  amount: money(numbers.monto), days: numbers.plazo_dias,
+                })}</p>
+              {currency !== 'USD' && <p className="field-hint currency-explanation-note">{t('Written explanations use USD; the amounts above use {currency}.', { currency })}</p>}
               <ul>{result.razones.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
             </div>
             {result.recomendaciones.length > 0 && (
               <div className="recommendations">
-                <h3><Lightbulb size={16} aria-hidden="true" /> What you could do next</h3>
+                <h3><Lightbulb size={16} aria-hidden="true" /> {t('What you could do next')}</h3>
                 <ul>{result.recomendaciones.map((item, index) => <li key={index}>{item}</li>)}</ul>
               </div>
             )}
             <div className="range-section">
-              <div className="range-heading"><h3>Your potential range</h3>
-                <span title="These model estimates are not guaranteed limits."><Info size={14} aria-label="Model estimates, not guaranteed limits" /></span>
+              <div className="range-heading"><h3>{t('Your potential range')}</h3>
+                <span title={t('These model estimates are not guaranteed limits.')}><Info size={14} aria-label={t('Model estimates, not guaranteed limits')} /></span>
               </div>
               <div className="range-grid">
-                <div className="range-value downside"><span><ArrowDownRight size={14} aria-hidden="true" /> Worst case estimate</span>
+                <div className="range-value downside"><span><ArrowDownRight size={14} aria-hidden="true" /> {t('Worst case estimate')}</span>
                   <strong>{money(result.numeros.peor_caso, true)}</strong></div>
-                <div className="range-value upside"><span><ArrowUpRight size={14} aria-hidden="true" /> Best case estimate</span>
+                <div className="range-value upside"><span><ArrowUpRight size={14} aria-hidden="true" /> {t('Best case estimate')}</span>
                   <strong>{money(result.numeros.mejor_caso, true)}</strong></div>
               </div>
-              <p>Estimated range on your full {money(result.numeros.monto)} over {result.numeros.plazo_dias} days.</p>
+              <p>{t('Estimated range on your full {amount} over {days} days.', { amount: money(result.numeros.monto), days: result.numeros.plazo_dias })}</p>
             </div>
             <div className="outlook-metrics">
-              <div><span>Expected return</span><strong>{percentage(result.numeros.rendimiento_esperado, true)}</strong></div>
-              <div><span>Chance of loss</span><strong>{percentage(result.numeros.prob_perdida)}</strong></div>
-              <div className="typical-move"><span>Typical move in {result.numeros.plazo_dias} days:</span>
+              <div><span>{t('Expected return')}</span><strong>{percentage(result.numeros.rendimiento_esperado, true)}</strong></div>
+              <div><span>{t('Chance of loss')}</span><strong>{percentage(result.numeros.prob_perdida)}</strong></div>
+              <div className="typical-move"><span>{t('Typical move in {days} days:', { days: result.numeros.plazo_dias })}</span>
                 <strong>±{percentage(result.numeros.volatilidad)}</strong></div>
             </div>
             {result.numeros.eventos.length > 0 && (
               <div className="events-list"><CalendarClock size={16} aria-hidden="true" />
-                <div><strong>On the calendar</strong>
+                <div><strong>{t('On the calendar')}</strong>
                   {result.numeros.eventos.map((event, index) => <p key={index}>{event}</p>)}</div>
               </div>
             )}
           </>
         ) : (
           <div className="outlook-placeholder">
-            <h2 id="outlook-heading" tabIndex={-1}>Ready to check your next plan?</h2>
-            <p>Adjust your choices, then select Get my answer to see an updated analysis.</p>
+            <h2 id={headingId} tabIndex={-1}>{t('Ready to check your next plan?')}</h2>
+            <p>{t('Adjust your choices, then select Get my answer to see an updated analysis.')}</p>
           </div>
         )}
       </div>

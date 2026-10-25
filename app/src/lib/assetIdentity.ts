@@ -2,35 +2,37 @@ export interface AssetIdentity {
   className: string
   color: string
   logo?: string
+  darkLogo?: string
   flags?: readonly [string, string]
   badge?: string
 }
 
 const logoRoot = '/assets/logos/'
 
-function mark(token: string, logo?: string, badge?: string): AssetIdentity {
+function mark(token: string, logo?: string, badge?: string, darkLogo?: string): AssetIdentity {
   return { className: 'asset-color-' + token, color: 'var(--asset-' + token + ')',
-    ...(logo ? { logo: logoRoot + logo } : {}), ...(badge ? { badge } : {}) }
+    ...(logo ? { logo: logoRoot + logo } : {}), ...(badge ? { badge } : {}),
+    ...(darkLogo ? { darkLogo: logoRoot + darkLogo } : {}) }
 }
 
 // Presentation metadata only. The selectable catalogue always comes from /api/assets.
 const identities: Readonly<Record<string, AssetIdentity>> = {
-  SPY: mark('spy', 'spdr.svg', 'ETF'),
-  VOO: mark('voo', 'vanguard.svg'),
-  QQQ: mark('qqq', 'invesco-qqq.svg', 'ETF'),
+  SPY: mark('spy', 'spdr.svg', 'ETF', 'spdr-dark.svg'),
+  VOO: mark('voo', 'vanguard.svg', undefined, 'vanguard-dark.svg'),
+  QQQ: mark('qqq', 'invesco-qqq.svg', 'ETF', 'invesco-qqq-dark.svg'),
   GLD: mark('gold', 'gold-bar.svg', 'ETF'),
-  AAPL: mark('apple', 'apple.svg'),
+  AAPL: mark('apple', 'apple.svg', undefined, 'apple-dark.svg'),
   MSFT: mark('microsoft', 'microsoft.svg'),
   NVDA: mark('nvidia', 'nvidia-green.svg'),
   'WALMEX.MX': mark('walmart', 'walmart.svg'),
-  'AMXB.MX': mark('america-movil', 'america-movil-symbol.svg', 'AM'),
+  'AMXB.MX': mark('america-movil', 'america-movil-symbol.svg', 'AM', 'america-movil-symbol-dark.svg'),
   'FEMSAUBD.MX': mark('femsa', 'femsa.svg', 'F'),
   'VOD.L': mark('vodafone', 'vodafone-red.svg'),
   'HSBA.L': mark('hsbc', 'hsbc-red.svg'),
   'SHEL.L': mark('shell', 'shell-color.svg'),
-  '^GSPC': mark('sp500', 'sp500-index.svg', 'IDX'),
-  '^FTSE': mark('ftse', 'ftse.svg', 'IDX'),
-  '^MXX': mark('ipc', 'ipc-index.svg', 'IDX'),
+  '^GSPC': mark('sp500', 'sp500-index.svg', 'IDX', 'sp500-index-dark.svg'),
+  '^FTSE': mark('ftse', 'ftse.svg', 'IDX', 'ftse-dark.svg'),
+  '^MXX': mark('ipc', 'ipc-index.svg', 'IDX', 'ipc-index-dark.svg'),
   'GBPUSD=X': { ...mark('gbp-usd'), flags: [logoRoot + 'gb.svg', logoRoot + 'us.svg'] },
   'MXN=X': { ...mark('usd-mxn'), flags: [logoRoot + 'us.svg', logoRoot + 'mx.svg'] },
   BTCUSDT: mark('bitcoin', 'btc.svg'),

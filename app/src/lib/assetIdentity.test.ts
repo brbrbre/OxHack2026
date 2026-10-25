@@ -1,5 +1,15 @@
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
+import AssetLogo from '../components/AssetLogo'
+import { ThemeProvider } from '../appearance/ThemeContext'
 import { assetIdentity } from './assetIdentity'
+
+function renderLogo(symbol: string, theme: 'light' | 'dark') {
+  return renderToStaticMarkup(createElement(ThemeProvider, {
+    initialTheme: theme, children: createElement(AssetLogo, { symbol }),
+  }))
+}
 
 describe('asset identities', () => {
   it('preserves the same portfolio color when assets change order', () => {
@@ -14,6 +24,22 @@ describe('asset identities', () => {
     expect(assetIdentity('NVDA').logo).toMatch(/nvidia-green\.svg$/)
     expect(assetIdentity('HSBA.L').logo).toMatch(/hsbc-red\.svg$/)
     expect(assetIdentity('GLD')).toMatchObject({ className: 'asset-color-gold', badge: 'ETF' })
+  })
+
+  it('uses legible wordmarks in dark mode while retaining each original in light mode', () => {
+    for (const symbol of ['SPY', 'VOO', 'QQQ', 'AAPL', 'AMXB.MX', '^GSPC', '^FTSE', '^MXX']) {
+      const identity = assetIdentity(symbol)
+      expect(identity.darkLogo, symbol).toBeDefined()
+      expect(identity.darkLogo, symbol).not.toBe(identity.logo)
+      expect(renderLogo(symbol, 'dark')).toContain('src="' + identity.darkLogo + '"')
+      expect(renderLogo(symbol, 'light')).toContain('src="' + identity.logo + '"')
+    }
+  })
+
+  it('keeps colorful marks, the gold marker and currency flags the same in both themes', () => {
+    for (const symbol of ['NVDA', 'HSBA.L', 'SHEL.L', 'BTCUSDT', 'GLD', 'GBPUSD=X', 'MXN=X']) {
+      expect(renderLogo(symbol, 'dark'), symbol).toBe(renderLogo(symbol, 'light'))
+    }
   })
 
   it('keeps the base crypto identity and explicit currency-pair flags', () => {

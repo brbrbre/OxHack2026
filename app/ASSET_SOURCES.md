@@ -15,7 +15,7 @@ Files are pinned to the source revisions below. Copies of the applicable collect
 | [Flag Icons by Panayiotis Lipiridis](https://github.com/lipis/flag-icons/tree/ac7e0eb3259eb62aa6100c435607e2fe03896a97) | `ac7e0eb3259eb62aa6100c435607e2fe03896a97` | `flag-icons-MIT.txt` |
 | [VectorLogoZone](https://github.com/VectorLogoZone/vectorlogozone/tree/7442420d3dc3ae97476fc57a64edfbfd7be95e24) | `7442420d3dc3ae97476fc57a64edfbfd7be95e24` | `vectorlogozone-README.txt` |
 
-Simple Icons and SVG Logos supply their collections under CC0. See also the [Simple Icons brand disclaimer](https://github.com/simple-icons/simple-icons/blob/4672316908c58ef9342f3069fe7ebe50d30d45b2/DISCLAIMER.md). The Vanguard icon is by selfh.st Icons, used under **CC BY 4.0**, without modification. The flag collection is **MIT**, copyright 2013 Panayiotis Lipiridis; its notice is retained.
+Simple Icons and SVG Logos supply their collections under CC0. See also the [Simple Icons brand disclaimer](https://github.com/simple-icons/simple-icons/blob/4672316908c58ef9342f3069fe7ebe50d30d45b2/DISCLAIMER.md). The original Vanguard icon is by selfh.st Icons, used under **CC BY 4.0**, without modification; its separate dark-theme adaptation is documented below. The flag collection is **MIT**, copyright 2013 Panayiotis Lipiridis; its notice is retained.
 
 VectorLogoZone distinguishes its website's AGPL license from the logos: the original marks belong to their owners and its modifications are dedicated to the public domain. The copied Shell mark is therefore not described as an AGPL-licensed logo.
 
@@ -45,6 +45,23 @@ VectorLogoZone distinguishes its website's AGPL license from the logos: the orig
 | `sp500-index.svg`, `ipc-index.svg` | Original SVGs created for this app | Compact descriptive index identifiers, using 500 and IPC alongside the full API name. |
 
 Google and Tesla files do not add those companies to the API catalogue. All copied files were checked for SVG vector content without scripts, event handlers, external resources, embedded raster images or `foreignObject` elements. Root fill and viewBox adaptations are listed above; brand path geometry is unchanged. The gold bullion geometry is original to this app.
+
+## Dark-theme display adaptations
+
+These local variants adjust paint colors for contrast on Horizon's dark surfaces; they are app adaptations, not official alternate brand artwork. Original files, path geometry and viewBoxes remain unchanged. `AssetLogo` selects a variant through `darkLogo` metadata, falling back to the original file if the variant cannot load, then to the existing text marker if both fail.
+
+| Adapted SVG | Local source | Color adjustment |
+| --- | --- | --- |
+| `spdr-dark.svg` | `spdr.svg` | Dark green lettering `#273f33` becomes pale green `#D5E8DD`. |
+| `apple-dark.svg` | `apple.svg` | Adds a soft white root fill `#F0F3F8`. |
+| `invesco-qqq-dark.svg` | `invesco-qqq.svg` | Blue `#000ad2` becomes lighter blue `#8F9AFF`. |
+| `ftse-dark.svg` | `ftse.svg` | Blue `#001eff` becomes lighter blue `#93A6FF`. |
+| `vanguard-dark.svg` | selfh.st Icons' `vanguard.svg`, CC BY 4.0, revision and notice above | Recolors red `#96151d` to `#E88991`; original geometry and attribution retained. |
+| `america-movil-symbol-dark.svg` | Original descriptive `america-movil-symbol.svg` | Globe/signals use `#69AEE6`, with internal grid `#19212C`. |
+| `sp500-index-dark.svg` | Original descriptive `sp500-index.svg` | Dark tile `#25334D` and lighter lettering/border `#B0C2DA`. |
+| `ipc-index-dark.svg` | Original descriptive `ipc-index.svg` | Dark tile `#21372F` and lighter teal lettering/border `#6AC6C0`. |
+
+Marks whose characteristic colors remain visible, including NVIDIA green, HSBC red, Shell, Walmart and cryptocurrency marks, retain their original files. Dark-theme image wrappers are transparent instead of receiving a blanket white background; Gold retains its gold-toned surface, and currency-pair flags retain their original colors and circular borders.
 
 ## Descriptive alternatives
 

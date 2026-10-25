@@ -55,9 +55,11 @@ describe('guided planner', () => {
 
   it('keeps native amount validation and a decimal keyboard on the budget step', () => {
     const html = render()
-    expect(html).toMatch(/id="amount"[^>]*type="number"[^>]*inputMode="decimal"[^>]*min="0.01"[^>]*max="1000000000"[^>]*step="0.01"[^>]*required=""/)
+    expect(html).toMatch(/id="amount"[^>]*type="number"[^>]*inputMode="decimal"[^>]*min="0"[^>]*max="1000000000"[^>]*step="any"[^>]*required=""/)
     expect(html).toContain('value="5275.50"')
     expect(html).toContain('aria-describedby="guided-amount-hint"')
+    expect(html).toContain('aria-label="Budget currency"')
+    for (const code of ['USD', 'MXN', 'GBP', 'EUR']) expect(html).toContain('value="' + code + '"')
   })
 
   it('uses familiar horizon names while retaining the API day values', () => {
@@ -88,12 +90,34 @@ describe('guided planner', () => {
     expect(html).toContain('I have something in mind')
   })
 
-  it('uses the API catalogue name and selected symbol for the single-asset review', () => {
-    const html = render({ step: 3, mode: 'asset', assets: { 'US stocks': [{ simbolo: 'AAPL', nombre: 'Apple from the API' }] } })
+  it('uses the API catalogue name and keeps the legacy single asset selected in review', () => {
+    const html = render({ step: 3, mode: 'asset', assets: {
+      'US stocks': [{ simbolo: 'AAPL', nombre: 'Apple from the API' }, { simbolo: 'NVDA', nombre: 'NVIDIA' }],
+    } })
     expect(html.match(/role="combobox"/g)).toHaveLength(1)
-    expect(html).toContain('value="Apple from the API (AAPL)"')
-    expect(html).toContain('name="asset" value="AAPL"')
+    expect(html).toContain('Apple from the API</strong><small>AAPL</small>')
+    expect(html).toContain('name="selected-assets" value="AAPL"')
     expect(html).not.toContain('id="asset-types"')
+  })
+
+  it('reviews multiple assets and their shared budget before submitting', () => {
+    const html = render({ step: 3, mode: 'asset', draft: { ...props.draft, simbolos: ['AAPL', 'GLD'], monto: '1000' } })
+    expect(html).toContain('Choose one or more investments, such as Apple or Gold.')
+    expect(html).toContain('name="selected-assets" value="AAPL"')
+    expect(html).toContain('name="selected-assets" value="GLD"')
+    expect(html).toContain('About $500 per asset')
+    expect(html).toContain('Your $1,000 budget is split equally across 2 assets for comparison, not an optimized allocation.')
+    expect(html.indexOf('About $500 per asset')).toBeLessThan(html.indexOf('See my plan'))
+    expect(button(html, 'See my plan')).not.toContain('disabled')
+  })
+
+  it('requires a selected asset only on the final manual review step', () => {
+    const draft = { ...props.draft, simbolos: [], simbolo: '' }
+    const html = render({ step: 3, mode: 'asset', draft })
+    expect(html).toContain('Choose at least one asset.')
+    expect(button(html, 'See my plan')).toContain('disabled=""')
+    expect(button(html, 'Back')).not.toContain('disabled')
+    expect(button(render({ step: 0, mode: 'asset', draft }), 'Continue')).not.toContain('disabled')
   })
 
   it('keeps exact API group names and associates a server error with the review choices', () => {

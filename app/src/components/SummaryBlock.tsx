@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { LoaderCircle, Volume2 } from 'lucide-react'
 import { api } from '../api/client'
 import type { SummaryResponse } from '../api/types'
+import { useI18n } from '../i18n/I18nContext'
 
 interface Props {
   summary: SummaryResponse | null
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function SummaryBlock({ summary, pending }: Props) {
+  const { t } = useI18n()
   const [playing, setPlaying] = useState(false)
   const [voice, setVoice] = useState<'elevenlabs' | 'browser' | null>(null)
   const audio = useRef<HTMLAudioElement | null>(null)
@@ -85,16 +87,16 @@ export default function SummaryBlock({ summary, pending }: Props) {
 
   return (
     <section className="summary-block" aria-labelledby="summary-heading" aria-busy={pending}>
-      <h3 id="summary-heading">In short</h3>
-      {pending || !summary ? <p className="summary-pending" role="status"><LoaderCircle size={16} aria-hidden="true" /> Writing a short summary…</p> : <>
+      <h3 id="summary-heading">{t('In short')}</h3>
+      {pending || !summary ? <p className="summary-pending" role="status"><LoaderCircle size={16} aria-hidden="true" /> {t('Writing a short summary…')}</p> : <>
         <p className="summary-text">{summary.texto}</p>
         <div className="summary-footer">
           <button type="button" className="listen-button" onClick={() => void listen()} disabled={playing}>
-            <Volume2 size={16} aria-hidden="true" /> {playing ? 'Playing…' : 'Listen'}
+            <Volume2 size={16} aria-hidden="true" /> {t(playing ? 'Playing…' : 'Listen')}
           </button>
           <span className="summary-source">
-            {summary.fuente === 'gemini' ? 'Written by Gemini from the numbers above. It does not change them.' : 'Written from the numbers above.'}
-            {voice === 'elevenlabs' ? ' Voice: ElevenLabs.' : voice === 'browser' ? ' Voice: your browser.' : ''}
+            {t(summary.fuente === 'gemini' ? 'Written by Gemini from the numbers above. It does not change them.' : 'Written from the numbers above.')}
+            {voice === 'elevenlabs' ? ' ' + t('Voice: ElevenLabs.') : voice === 'browser' ? ' ' + t('Voice: your browser.') : ''}
           </span>
         </div>
       </>}

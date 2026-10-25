@@ -3,6 +3,7 @@ import type { KeyboardEvent } from 'react'
 import { Check, ChevronDown, Search } from 'lucide-react'
 import type { Asset, AssetsResponse } from '../api/types'
 import AssetLogo from './AssetLogo'
+import { useI18n } from '../i18n/I18nContext'
 
 interface Props {
   assets: AssetsResponse | null
@@ -21,12 +22,13 @@ function searchText(value: string): string {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('en')
 }
 
-export function filterAssetGroups(assets: AssetsResponse | null, query: string): AssetGroup[] {
+export function filterAssetGroups(assets: AssetsResponse | null, query: string,
+  translateName: (name: string) => string = (name) => name): AssetGroup[] {
   const words = searchText(query).trim().split(/\s+/).filter(Boolean)
   return Object.entries(assets ?? {}).map(([name, items]) => ({
     name,
     assets: items.filter((asset) => {
-      const searchable = searchText(asset.nombre + ' ' + asset.simbolo)
+      const searchable = searchText(asset.nombre + ' ' + asset.simbolo + ' ' + translateName(asset.nombre))
       return words.every((word) => searchable.includes(word))
     }),
   })).filter((group) => group.assets.length > 0)
@@ -41,6 +43,7 @@ export function nextAssetIndex(current: number, count: number, key: string): num
 }
 
 export default function AssetPicker({ assets, symbol, onChange, unavailable, describedBy }: Props) {
+  const { t } = useI18n()
   const instanceId = useId()
   const listboxId = instanceId + '-assets'
   const instructionsId = instanceId + '-instructions'
@@ -53,7 +56,7 @@ export default function AssetPicker({ assets, symbol, onChange, unavailable, des
   const [activeSymbol, setActiveSymbol] = useState<string | null>(null)
   const selected = Object.values(assets ?? {}).flat().find((asset) => asset.simbolo === symbol)
   const disabled = !assets || Object.values(assets).every((items) => items.length === 0)
-  const groups = filterAssetGroups(assets, query)
+  const groups = filterAssetGroups(assets, query, t)
   const options = groups.flatMap((group) => group.assets)
   const activeIndex = options.findIndex((asset) => asset.simbolo === activeSymbol)
   const selectedLabel = selected ? selected.nombre + ' (' + selected.simbolo + ')' : ''
@@ -123,7 +126,7 @@ export default function AssetPicker({ assets, symbol, onChange, unavailable, des
       event.preventDefault()
       const nextQuery = event.key.length === 1 ? event.key : ''
       setQuery(nextQuery)
-      setActiveSymbol(filterAssetGroups(assets, nextQuery)[0]?.assets[0]?.simbolo ?? null)
+      setActiveSymbol(filterAssetGroups(assets, nextQuery, t)[0]?.assets[0]?.simbolo ?? null)
       setOpen(true)
     }
   }
@@ -137,7 +140,7 @@ export default function AssetPicker({ assets, symbol, onChange, unavailable, des
         </span>
         <input id="asset" ref={inputRef} className="asset-picker-input" type="text" role="combobox"
           value={open ? query : selectedLabel} disabled={disabled} autoComplete="off" spellCheck={false}
-          placeholder={disabled ? unavailable ? 'Assets unavailable' : 'Loading assets…' : 'Search name or symbol'}
+          placeholder={t(disabled ? unavailable ? 'Assets unavailable' : 'Loading assets…' : 'Search name or symbol')}
           aria-autocomplete="list" aria-expanded={open} aria-controls={open ? listboxId : undefined}
           aria-activedescendant={open && activeIndex >= 0 ? listboxId + '-option-' + activeIndex : undefined}
           aria-describedby={[describedBy, instructionsId].filter(Boolean).join(' ')}
@@ -147,11 +150,11 @@ export default function AssetPicker({ assets, symbol, onChange, unavailable, des
             const nextQuery = !open && selectedLabel && value.startsWith(selectedLabel) ? value.slice(selectedLabel.length) : value
             setQuery(nextQuery)
             setOpen(true)
-            setActiveSymbol(filterAssetGroups(assets, nextQuery)[0]?.assets[0]?.simbolo ?? null)
+            setActiveSymbol(filterAssetGroups(assets, nextQuery, t)[0]?.assets[0]?.simbolo ?? null)
           }}
           onKeyDown={handleKeyDown} />
         <button type="button" className="asset-picker-toggle" tabIndex={-1} disabled={disabled}
-          aria-label={open ? 'Close asset options' : 'Show asset options'} aria-expanded={open} aria-controls={open ? listboxId : undefined}
+          aria-label={t(open ? 'Close asset options' : 'Show asset options')} aria-expanded={open} aria-controls={open ? listboxId : undefined}
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => {
             if (open) close()
@@ -162,10 +165,10 @@ export default function AssetPicker({ assets, symbol, onChange, unavailable, des
           }}><ChevronDown size={16} aria-hidden="true" /></button>
       </div>
       <input type="hidden" name="asset" value={selected?.simbolo ?? ''} />
-      <span id={instructionsId} className="sr-only">Type a name or symbol. Use the arrow keys to browse, Enter to choose, and Escape to close.</span>
-      {open && <div className="asset-picker-menu" ref={menuRef} id={listboxId} role="listbox" aria-label="Available assets">
-        {groups.length ? groups.map((group) => <div className="asset-picker-group" key={group.name} role="group" aria-label={group.name}>
-          <div className="asset-picker-group-label" aria-hidden="true">{group.name}</div>
+      <span id={instructionsId} className="sr-only">{t('Type a name or symbol. Use the arrow keys to browse, Enter to choose, and Escape to close.')}</span>
+      {open && <div className="asset-picker-menu" ref={menuRef} id={listboxId} role="listbox" aria-label={t('Available assets')}>
+        {groups.length ? groups.map((group) => <div className="asset-picker-group" key={group.name} role="group" aria-label={t(group.name)}>
+          <div className="asset-picker-group-label" aria-hidden="true">{t(group.name)}</div>
           {group.assets.map((asset) => {
             const index = options.findIndex((item) => item.simbolo === asset.simbolo)
             return <div className="asset-picker-option" id={listboxId + '-option-' + index}
@@ -180,7 +183,7 @@ export default function AssetPicker({ assets, symbol, onChange, unavailable, des
               {asset.simbolo === symbol && <Check size={16} className="asset-picker-check" aria-hidden="true" />}
             </div>
           })}
-        </div>) : <p className="asset-picker-empty" role="status">No assets match “{query}”. Try a name or symbol.</p>}
+        </div>) : <p className="asset-picker-empty" role="status">{t('No assets match “{query}”. Try a name or symbol.', { query })}</p>}
       </div>}
     </div>
   )
