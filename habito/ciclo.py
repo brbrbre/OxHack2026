@@ -78,6 +78,23 @@ def revisar(conn, rec: dict, cuando: datetime, consultar=None) -> dict:
     return rec | cambios
 
 
+def abrir(conn, rec: dict, cuando: datetime, colgar=None) -> None:
+    """La persona abrió el link: cuenta como abierto y, si la llamada ya salió, se corta.
+    Es uno u otro: link abierto o llamada, nunca los dos."""
+    if rec["abierto_en"]:
+        return
+    cambios = {"abierto_en": almacen.iso(cuando)}
+    if rec["estado"] in ("enviado", "llamando"):
+        cambios["estado"] = "abierto"
+    if rec["estado"] == "llamando" and rec.get("llamada_sid"):
+        try:
+            (colgar or twilio.colgar)(rec["llamada_sid"], rec.get("llamada_estado"))
+            cambios["llamada_estado"] = "canceled"
+        except Exception:
+            pass
+    almacen.actualizar(conn, rec["token"], **cambios)
+
+
 def procesar(conn, cuando: datetime, decidir, enviar=None, voz=None) -> dict:
     """Una vuelta del ciclo. `decidir(rec)` devuelve la respuesta de /api/decide de hoy para ese recordatorio."""
     enviar = enviar or twilio
@@ -101,7 +118,15 @@ def procesar(conn, cuando: datetime, decidir, enviar=None, voz=None) -> dict:
         guion = mensajes.guion_llamada(rec)
         try:
             hay_audio = voz is not None and voz.audio(guion) is not None
+            # El audio tarda unos segundos: si abrió el link mientras tanto, ya no se llama.
+            if almacen.obtener(conn, rec["token"])["abierto_en"]:
+                continue
             sid = enviar.llamar(telefono_llamada(rec["telefono"]), audio_url(rec) if hay_audio else None, guion)
+            if almacen.obtener(conn, rec["token"])["abierto_en"]:  # lo abrió mientras salía la llamada
+                if sid:
+                    enviar.colgar(sid, "queued")
+                almacen.actualizar(conn, rec["token"], llamada_sid=sid, llamada_estado="canceled" if sid else None)
+                continue
             almacen.actualizar(conn, rec["token"], estado="llamando", llamada_sid=sid,
                                llamada_estado="queued" if sid else None)
             hechos["llamadas"] += 1

@@ -63,6 +63,13 @@ def llamar_gemini(h: dict) -> str | None:
     return (r.text or "").strip() or None
 
 
+def link_aparte(texto: str, link: str) -> str:
+    """El link va solo en la última línea: pegado al final de una oración cuesta más tocarlo."""
+    i = texto.rfind(link)
+    antes, despues = texto[:i].rstrip(), texto[i + len(link):].strip(" .")
+    return f"{antes}\n\n{link}" + (f"\n{despues}" if despues else "")
+
+
 def whatsapp(rec: dict, hoy: dict, link: str, llamar=llamar_gemini) -> tuple[str, str]:
     """(texto, fuente). fuente = 'gemini' o 'template'."""
     h = hechos(rec, hoy, link)
@@ -71,8 +78,8 @@ def whatsapp(rec: dict, hoy: dict, link: str, llamar=llamar_gemini) -> tuple[str
     except Exception:
         propuesto = None
     if propuesto and link in propuesto and rec["nombre"].lower() in propuesto.lower() and len(propuesto) <= LARGO_MAXIMO:
-        return propuesto, "gemini"
-    return plantilla(h), "template"
+        return link_aparte(propuesto, link), "gemini"
+    return link_aparte(plantilla(h), link), "template"
 
 
 def guion_llamada(rec: dict) -> str:
