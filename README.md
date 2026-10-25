@@ -139,6 +139,7 @@ What we added:
 - Trend + TDA (Brisma) became the main model; XGBoost (Felipe) is the backup and the 3-year baseline is the fallback.
 - "Help me choose" plans, "In short" with Listen, "Ask Horizon", and the habit for one asset or a whole plan.
 - A landing page, a guided setup, several assets at once, five languages, local currencies and a dark theme (Carlos).
+- A plan over the assets you pick (`/api/plan/selected`), a horizon slider and a sunrise intro you can replay (Carlos).
 - Real status from Twilio in the habit panel, HTTPS on the demo, and Tiger Data grading.
 
 What we changed after testing:
@@ -150,7 +151,6 @@ What we left out:
 - WhatsApp through Meta's Cloud API: creating the test number failed twice, so the demo uses the Twilio sandbox.
 - SMS as a second channel: a US Twilio number can't text UK mobiles. The code supports it (`HABITO_CANAL=sms`); the app doesn't offer it.
 - Alpha Vantage, the Streamlit fallback and Delta: not needed in the end.
-- A single API call for several selected assets: the app calls `/api/decide` once per asset instead.
 - Banxico's rate calendar: its late-2026 dates were not published where we looked.
 
 ## Limitations
@@ -173,7 +173,7 @@ uvicorn api.main:app --port 8000             # API
 cd app && npm ci && npm run dev              # web app on http://localhost:5173
 ```
 
-Tests: `python -m pytest -q tests` (125 tests, no internet needed) and `cd app && npm test` (436 tests).
+Tests: `python -m pytest -q tests` (159 tests, no internet needed) and `cd app && npm test` (515 tests).
 Copy `.env.example` to `.env` for Gemini, ElevenLabs, Tiger Data and Twilio. Without keys, the app still runs with local texts.
 
 ## Repo map
