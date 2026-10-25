@@ -132,15 +132,22 @@ export interface RemindRequest {
   perfil: RiskProfile
 }
 
-/** Reminder state: pendiente -> enviado (WhatsApp) -> abierto (link opened) or llamado (phone call). */
+/**
+ * Reminder state: pendiente -> enviado (WhatsApp) -> abierto (link opened), or llamando (call placed)
+ * -> llamado (Twilio says "completed") or sin_respuesta (busy, no-answer, failed, canceled).
+ */
 export interface HabitStatus {
   token: string
   vence: string
-  estado: 'pendiente' | 'enviado' | 'abierto' | 'llamado' | 'error'
+  estado: 'pendiente' | 'enviado' | 'abierto' | 'llamando' | 'llamado' | 'sin_respuesta' | 'error'
   enviado_en: string | null
   abierto_en: string | null
   llamado_en: string | null
   error: string | null
+  /** Last status Twilio reported for the message (queued, sent, delivered, read, undelivered, failed). */
+  mensaje_estado?: string | null
+  /** Last status Twilio reported for the call (queued, ringing, in-progress, completed, busy, no-answer...). */
+  llamada_estado?: string | null
   simbolo: string
   plazo_dias: number
   demo: boolean

@@ -256,7 +256,8 @@ class RemindRequest(BaseModel):
 
 
 def _vista(rec: dict) -> dict:
-    claves = ("token", "vence", "estado", "enviado_en", "abierto_en", "llamado_en", "error", "simbolo", "plazo_dias")
+    claves = ("token", "vence", "estado", "enviado_en", "abierto_en", "llamado_en", "error", "simbolo", "plazo_dias",
+              "mensaje_estado", "llamada_estado")
     return {k: rec[k] for k in claves} | {"demo": os.getenv("HABITO_DEMO") == "1"}
 
 
@@ -287,6 +288,10 @@ def habit_status(token: str):
     rec = habito_db.obtener(habito_conn(), token)
     if not rec:
         raise HTTPException(404, "Reminder not found")
+    try:  # el panel pregunta cada 4 s: así ve lo que Twilio dice ahora, no lo que dijo al aceptar
+        rec = habito_ciclo.revisar(habito_conn(), rec, habito_db.ahora())
+    except Exception:
+        pass
     return _vista(rec)
 
 

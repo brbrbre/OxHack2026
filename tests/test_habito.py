@@ -20,16 +20,27 @@ def _rec(conn, decision="ESPERAR", plazo=180):
 
 
 class Enviar:
-    def __init__(self, falla=False):
+    """Twilio simulado: devuelve SIDs y contesta el estado que diga la prueba."""
+
+    def __init__(self, falla=False, llamada="queued", mensaje="sent"):
         self.wa, self.llamadas, self.falla = [], [], falla
+        self.estado_de_llamada, self.estado_del_mensaje = llamada, mensaje
 
     def mensaje(self, tel, texto):
         if self.falla:
             raise RuntimeError("Twilio 400")
         self.wa.append((tel, texto))
+        return "SM1"
 
     def llamar(self, tel, url, texto):
         self.llamadas.append((tel, url, texto))
+        return "CA1"
+
+    def estado_mensaje(self, sid):
+        return self.estado_del_mensaje
+
+    def estado_llamada(self, sid):
+        return self.estado_de_llamada
 
 
 class Voz:
@@ -77,7 +88,63 @@ def test_ciclo_manda_whatsapp_y_llama_si_no_abre(conn, monkeypatch):
     assert ciclo.procesar(conn, vence + timedelta(minutes=3), lambda r: _hoy(), enviar=env, voz=Voz())["llamadas"] == 1
     tel, url, texto = env.llamadas[0]
     assert url == f"http://95.0.0.1/api/habit/audio/{rec['token']}.mp3" and "waiting period" in texto
-    assert almacen.obtener(conn, rec["token"])["estado"] == "llamado"
+    r = almacen.obtener(conn, rec["token"])
+    assert r["estado"] == "llamando" and r["llamada_sid"] == "CA1" and r["llamado_en"] is None
+    env.estado_de_llamada = "completed"
+    ciclo.procesar(conn, vence + timedelta(minutes=4), lambda r: _hoy(), enviar=env, voz=Voz())
+    r = almacen.obtener(conn, rec["token"])
+    assert r["estado"] == "llamado" and r["llamada_estado"] == "completed" and r["llamado_en"] is not None
+    assert len(env.llamadas) == 1
+
+
+@pytest.mark.parametrize("estado", ["busy", "no-answer", "failed", "canceled"])
+def test_llamada_sin_contestar_no_cuenta_como_llamado(conn, monkeypatch, estado):
+    monkeypatch.setenv("HABITO_ESPERA_MIN", "0")
+    rec = _rec(conn)
+    env = Enviar(llamada=estado)
+    vence = T0 + timedelta(days=180)
+    ciclo.procesar(conn, vence, lambda r: _hoy(), enviar=env)
+    ciclo.procesar(conn, vence, lambda r: _hoy(), enviar=env)
+    ciclo.procesar(conn, vence, lambda r: _hoy(), enviar=env)
+    r = almacen.obtener(conn, rec["token"])
+    assert r["estado"] == "sin_respuesta" and r["llamada_estado"] == estado and r["llamado_en"] is None
+    assert len(env.llamadas) == 1
+
+
+def test_estado_del_whatsapp(conn):
+    rec = _rec(conn)
+    env = Enviar(mensaje="undelivered")
+    vence = T0 + timedelta(days=180)
+    ciclo.procesar(conn, vence, lambda r: _hoy(), enviar=env)
+    assert almacen.obtener(conn, rec["token"])["mensaje_estado"] == "queued"
+    ciclo.procesar(conn, vence, lambda r: _hoy(), enviar=env)
+    assert almacen.obtener(conn, rec["token"])["mensaje_estado"] == "undelivered"
+    env.estado_del_mensaje = "delivered"  # ya es final: no se vuelve a preguntar
+    ciclo.procesar(conn, vence, lambda r: _hoy(), enviar=env)
+    assert almacen.obtener(conn, rec["token"])["mensaje_estado"] == "undelivered"
+    assert almacen.por_revisar(conn) == []
+
+
+def test_si_twilio_no_responde_el_ciclo_sigue(conn, monkeypatch):
+    monkeypatch.setenv("HABITO_ESPERA_MIN", "2")
+    rec = _rec(conn)
+    env = Enviar()
+    env.estado_mensaje = lambda sid: (_ for _ in ()).throw(RuntimeError("Twilio 503"))
+    vence = T0 + timedelta(days=180)
+    ciclo.procesar(conn, vence, lambda r: _hoy(), enviar=env)
+    assert ciclo.procesar(conn, vence + timedelta(minutes=3), lambda r: _hoy(), enviar=env)["llamadas"] == 1
+    assert almacen.obtener(conn, rec["token"])["estado"] == "llamando"
+
+
+def test_base_vieja_recibe_las_columnas_nuevas(tmp_path):
+    import sqlite3
+    archivo = tmp_path / "vieja.sqlite"
+    vieja = sqlite3.connect(archivo)
+    vieja.execute(almacen.ESQUEMA)
+    vieja.commit()
+    vieja.close()
+    columnas = {f["name"] for f in almacen.conectar(archivo).execute("PRAGMA table_info(recordatorios)")}
+    assert set(almacen.NUEVAS) <= columnas
 
 
 def test_si_abre_el_link_no_llama(conn, monkeypatch):
@@ -126,6 +193,16 @@ def test_twilio_arma_las_peticiones(monkeypatch):
     assert llamadas[0][1] == {"From": "whatsapp:+14155550000", "To": "whatsapp:+15550100123", "Body": "hola"}
     assert llamadas[1][1]["Twiml"] == "<Response><Play>http://x/a.mp3?b=1&amp;c=2</Play></Response>"
 
+    class Estado:
+        status_code = 200
+        def json(self):
+            return {"status": "busy"}
+
+    pedidos = []
+    monkeypatch.setattr(twilio.requests, "get", lambda url, auth, timeout: pedidos.append(url) or Estado())
+    assert twilio.estado_llamada("CA9") == "busy" and pedidos[0].endswith("/Accounts/AC123/Calls/CA9.json")
+    assert twilio.estado_mensaje("SM9") == "busy" and pedidos[1].endswith("/Accounts/AC123/Messages/SM9.json")
+
 
 # --- Rutas del API ---------------------------------------------------------------
 
@@ -169,6 +246,16 @@ def test_ahora_solo_en_demo(client, monkeypatch):
                                                                      "llamar": staticmethod(lambda *a: None)}))
     r = client.post(f"/api/habit/{tk}/now")
     assert r.status_code == 200 and r.json()["estado"] == "enviado" and f"/r/{tk}" in enviados[0]
+
+
+def test_el_panel_ve_el_estado_real_de_la_llamada(client, monkeypatch):
+    from api import main
+    tk = client.post("/api/habit/remind", json=BODY).json()["token"]
+    main.habito_db.actualizar(main.habito_conn(), tk, estado="llamando", llamada_sid="CA1", llamada_estado="queued")
+    monkeypatch.setattr(main.habito_ciclo, "twilio", type("T", (), {"estado_llamada": staticmethod(lambda sid: "busy")}))
+    r = client.get(f"/api/habit/{tk}").json()
+    assert r["estado"] == "sin_respuesta" and r["llamada_estado"] == "busy" and r["llamado_en"] is None
+    assert "llamada_sid" not in r
 
 
 def test_sin_twilio_el_error_se_entiende():

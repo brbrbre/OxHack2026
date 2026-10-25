@@ -22,13 +22,21 @@ CREATE TABLE IF NOT EXISTS recordatorios (
     perfil       TEXT NOT NULL,
     decision     TEXT NOT NULL,
     sugerido     REAL NOT NULL,
-    estado       TEXT NOT NULL DEFAULT 'pendiente',  -- pendiente, enviado, abierto, llamado, error
+    estado       TEXT NOT NULL DEFAULT 'pendiente',  -- pendiente, enviado, abierto, llamando, llamado, sin_respuesta, error
     enviado_en   TEXT,
     abierto_en   TEXT,
     llamado_en   TEXT,
     error        TEXT
 )
 """
+
+# Columnas que llegaron después; conectar() las agrega a una base ya creada.
+# Guardan el SID de Twilio y el último estado que Twilio reportó (delivered, busy, completed...).
+NUEVAS = ("mensaje_sid", "mensaje_estado", "llamada_sid", "llamada_estado")
+
+# Estados de Twilio que ya no cambian: no hace falta volver a preguntar.
+FINALES_MENSAJE = ("delivered", "read", "failed", "undelivered")
+FINALES_LLAMADA = ("completed", "busy", "no-answer", "failed", "canceled")
 
 
 def ahora() -> datetime:
@@ -45,6 +53,11 @@ def conectar(archivo: Path | None = None) -> sqlite3.Connection:
     conn = sqlite3.connect(archivo, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute(ESQUEMA)
+    hay = {f["name"] for f in conn.execute("PRAGMA table_info(recordatorios)")}
+    for columna in NUEVAS:
+        if columna not in hay:
+            conn.execute(f"ALTER TABLE recordatorios ADD COLUMN {columna} TEXT")
+    conn.commit()
     return conn
 
 
@@ -82,6 +95,16 @@ def sin_abrir(conn, cuando: datetime, espera: timedelta) -> list[dict]:
     return [dict(f) for f in conn.execute(
         "SELECT * FROM recordatorios WHERE estado = 'enviado' AND abierto_en IS NULL AND enviado_en <= ?",
         (_iso(cuando - espera),))]
+
+
+def por_revisar(conn) -> list[dict]:
+    """Mensajes o llamadas cuyo estado en Twilio todavía puede cambiar."""
+    m = ",".join("?" * len(FINALES_MENSAJE))
+    ll = ",".join("?" * len(FINALES_LLAMADA))
+    return [dict(f) for f in conn.execute(
+        f"SELECT * FROM recordatorios WHERE (mensaje_sid IS NOT NULL AND COALESCE(mensaje_estado, '') NOT IN ({m})) "
+        f"OR (llamada_sid IS NOT NULL AND COALESCE(llamada_estado, '') NOT IN ({ll}))",
+        (*FINALES_MENSAJE, *FINALES_LLAMADA))]
 
 
 def iso(t: datetime) -> str:
