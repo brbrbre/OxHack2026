@@ -5,7 +5,7 @@ import { api } from './api/client'
 import { assetTypesError, errorMessage, isAbortError } from './api/errors'
 import type { AssetsResponse, DecideResponse, PlanResponse, PricesResponse, SummaryResponse } from './api/types'
 import { DEFAULT_NOTICE, USE_MOCKS } from './config'
-import { planFromSearch } from './lib/planLink'
+import { planFromSearch, reminderFromSearch } from './lib/planLink'
 import InvestmentForm from './components/InvestmentForm'
 import type { PlanDraft, PlannerMode } from './components/InvestmentForm'
 import PlannerEntry from './components/PlannerEntry'
@@ -72,6 +72,11 @@ export default function App({ active = true, onHome }: AppProps = {}) {
   const symbols = selectedSymbols(draft)
   const multiple = mode === 'asset' && symbols.length > 1
   const priceSymbol = multiple && result ? result.simbolo : draft.simbolo
+
+  useEffect(() => {
+    const reminder = reminderFromSearch(currentSearch())
+    if (reminder) api.habitOpen(reminder).catch(() => { /* the plan still opens; the call may still come */ })
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()

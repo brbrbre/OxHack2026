@@ -284,11 +284,20 @@ def test_remind_pide_permiso_formato_y_numero_permitido(client):
     assert r.status_code == 200 and r.json()["estado"] == "pendiente" and len(r.json()["token"]) > 15
 
 
-def test_link_marca_abierto_y_abre_la_app_con_el_plan(client):
+def test_el_link_abre_la_app_con_el_plan_sin_marcar(client):
     tk = client.post("/api/habit/remind", json=BODY).json()["token"]
     r = client.get(f"/r/{tk}", follow_redirects=False)
-    assert r.status_code in (302, 307) and r.headers["location"] == "/?simbolo=SPY&monto=1000&plazo=180&perfil=moderado"
-    assert client.get(f"/api/habit/{tk}").json()["abierto_en"] is not None
+    assert r.status_code in (302, 307)
+    assert r.headers["location"] == f"/?simbolo=SPY&monto=1000&plazo=180&perfil=moderado&recordatorio={tk}"
+    # La vista previa de WhatsApp visita el link: eso no cuenta como abierto.
+    assert client.get(f"/api/habit/{tk}").json()["abierto_en"] is None
+
+
+def test_la_app_marca_abierto_al_cargar(client):
+    tk = client.post("/api/habit/remind", json=BODY).json()["token"]
+    r = client.post(f"/api/habit/{tk}/open")
+    assert r.status_code == 200 and r.json()["abierto_en"] is not None
+    assert client.post("/api/habit/no-existe/open").status_code == 404
 
 
 def test_ahora_solo_en_demo(client, monkeypatch):

@@ -82,6 +82,10 @@ export const api = {
     return parseHabit(await request('/api/habit/' + encodeURIComponent(token), {}, signal))
   },
 
+  async habitOpen(token: string, signal?: AbortSignal) {
+    return parseHabit(await request('/api/habit/' + encodeURIComponent(token) + '/open', { method: 'POST' }, signal))
+  },
+
   async habitNow(token: string, signal?: AbortSignal) {
     return parseHabit(await request('/api/habit/' + encodeURIComponent(token) + '/now', { method: 'POST' }, signal))
   },

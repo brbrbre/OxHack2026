@@ -21,7 +21,7 @@ export function ThemeProvider({ children, initialTheme }: { children: ReactNode;
   })
   useEffect(() => {
     document.documentElement.dataset.theme = theme
-    document.documentElement.style.colorScheme = theme
+    document.documentElement.style.colorScheme = theme === 'dark' ? 'dark' : 'only light'
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#10151C' : '#F7F8F6')
   }, [theme])
   useEffect(() => {
