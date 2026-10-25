@@ -8,6 +8,10 @@ import { DEFAULT_NOTICE, USE_MOCKS } from './config'
 import { planFromSearch } from './lib/planLink'
 import InvestmentForm from './components/InvestmentForm'
 import type { PlanDraft, PlannerMode } from './components/InvestmentForm'
+import PlannerEntry from './components/PlannerEntry'
+import type { Experience } from './components/PlannerEntry'
+import GuidedPlanner from './components/GuidedPlanner'
+import type { GuidedStep } from './components/GuidedPlanner'
 import DecisionCard from './components/DecisionCard'
 import PlanResult from './components/PlanResult'
 import ErrorMessage from './components/ErrorMessage'
@@ -21,7 +25,10 @@ const defaultPlan: PlanDraft = {
   simbolo: 'SPY', monto: '1000', plazo_dias: 30, perfil: 'moderado', tipos: ['ETFs', 'US stocks', 'Crypto'],
 }
 
-const initialPlan: PlanDraft = planFromSearch(window.location.search, defaultPlan)
+const search = typeof window === 'undefined' ? '' : window.location.search
+const initialPlan: PlanDraft = planFromSearch(search, defaultPlan)
+// A reminder link already carries the plan, so it skips the entry screen and opens the filled form.
+const openedFromLink = new URLSearchParams(search).has('simbolo')
 
 export default function App() {
   const [assets, setAssets] = useState<AssetsResponse | null>(null)
@@ -38,10 +45,16 @@ export default function App() {
   const [deciding, setDeciding] = useState(false)
   const [decideError, setDecideError] = useState<string | null>(null)
   const [typesError, setTypesError] = useState<string | null>(null)
+  const [hasOpenedResults, setHasOpenedResults] = useState(false)
+  const [experience, setExperience] = useState<Experience | null>(openedFromLink ? 'quick' : null)
+  const [guidedOpen, setGuidedOpen] = useState(false)
+  const [guidedStep, setGuidedStep] = useState<GuidedStep>(0)
+  const hasChosenExperience = useRef(false)
   const decisionController = useRef<AbortController | null>(null)
   const [summary, setSummary] = useState<SummaryResponse | null>(null)
   const [summaryPending, setSummaryPending] = useState(false)
   const summaryController = useRef<AbortController | null>(null)
+  const showWorkspace = hasOpenedResults && !guidedOpen && experience !== null
 
   useEffect(() => {
     const controller = new AbortController()
@@ -65,7 +78,7 @@ export default function App() {
   }, [assetsAttempt])
 
   useEffect(() => {
-    if (!assets || mode !== 'asset') return
+    if (!assets || mode !== 'asset' || !showWorkspace) return
     const controller = new AbortController()
     setPrices(null)
     setPricesPending(true)
@@ -78,7 +91,7 @@ export default function App() {
       if (!controller.signal.aborted) setPricesPending(false)
     })
     return () => controller.abort()
-  }, [assets, draft.simbolo, pricesAttempt, mode])
+  }, [assets, draft.simbolo, pricesAttempt, mode, showWorkspace])
 
   useEffect(() => () => {
     decisionController.current?.abort()
@@ -86,17 +99,21 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (!deciding && !result && !portfolio && !decideError) return
+    if (!showWorkspace || (!deciding && !result && !portfolio && !decideError)) return
     const heading = document.getElementById('outlook-heading')
     heading?.focus({ preventScroll: true })
-    const section = heading?.closest('section')
-    const top = section?.getBoundingClientRect().top ?? 0
+    const target = heading?.closest('.results-column') ?? heading?.closest('section')
+    const top = target?.getBoundingClientRect().top ?? 0
     // The answer must be on screen: always on phones, and on laptops when the
     // person scrolled down to the button and the answer sits above the fold.
     if (window.matchMedia('(max-width: 760px)').matches || top < 0 || top > window.innerHeight / 2) {
-      section?.scrollIntoView({ behavior: 'instant', block: 'start' })
+      target?.scrollIntoView({ behavior: 'instant', block: 'start' })
     }
-  }, [deciding, result, portfolio, decideError])
+  }, [deciding, result, portfolio, decideError, showWorkspace])
+
+  useEffect(() => {
+    if (!showWorkspace && decideError) document.getElementById('setup-error')?.focus()
+  }, [showWorkspace, decideError])
 
   useEffect(() => {
     if (typesError && mode === 'plan') document.getElementById('asset-types')?.focus()
@@ -124,6 +141,28 @@ export default function App() {
     clearAnalysis()
     setMode(next)
   }, [mode, clearAnalysis])
+
+  function chooseExperience(next: Experience | null) {
+    clearAnalysis()
+    if (next && !hasChosenExperience.current) {
+      if (next === 'guided') setMode('plan')
+      hasChosenExperience.current = true
+    }
+    setExperience(next)
+    setGuidedOpen(next === 'guided')
+    if (next === 'guided') setGuidedStep(0)
+  }
+
+  function changeGuidedStep(next: GuidedStep) {
+    clearAnalysis()
+    setGuidedStep(next)
+  }
+
+  useEffect(() => {
+    if (showWorkspace) return
+    const target = experience === null ? 'entry-heading' : guidedOpen ? null : 'planner'
+    if (target) document.getElementById(target)?.focus({ preventScroll: true })
+  }, [experience, guidedOpen, showWorkspace])
 
   async function analyze() {
     if (!assets) return
@@ -154,6 +193,8 @@ export default function App() {
         const response = await api.plan(body, controller.signal)
         if (!controller.signal.aborted) {
           setPortfolio(response)
+          setHasOpenedResults(true)
+          setGuidedOpen(false)
           loadSummary('plan', body)
         }
       } else {
@@ -161,6 +202,8 @@ export default function App() {
         const response = await api.decide(body, controller.signal)
         if (!controller.signal.aborted) {
           setResult(response)
+          setHasOpenedResults(true)
+          setGuidedOpen(false)
           loadSummary('decide', body)
         }
       }
@@ -211,27 +254,48 @@ export default function App() {
         <span className="event-tag"><span /> Built for OxHack ’26</span>
       </header>
 
-      <main className="page-content" id="top">
-        <section className="page-intro" aria-labelledby="page-title">
+      <main className={'page-content' + (!showWorkspace ? ' page-content-setup' : '')} id="top">
+        {showWorkspace && <section className="page-intro" aria-labelledby="page-title">
           <div>
             <h1 id="page-title">Invest now, wait, or not yet?</h1>
             <p>Pick an asset and how long you'll hold it. We size the investment to the loss you can accept.</p>
           </div>
-        </section>
+        </section>}
 
         {USE_MOCKS && <div className="demo-banner" role="note">
           <div><FlaskConical size={16} aria-hidden="true" /><strong>Demo mode</strong>
             <span>Sample prices and decisions. No live analysis.</span></div>
         </div>}
 
-        {assetsError && <div className="assets-error"><ErrorMessage message={assetsError}
+        {assetsError && experience && <div className="assets-error"><ErrorMessage message={assetsError}
           onRetry={() => setAssetsAttempt((attempt) => attempt + 1)} /></div>}
 
-        <div className="workspace" id="planner" tabIndex={-1}>
-          <InvestmentForm assets={assets} draft={draft} onChange={changePlan}
-            onSubmit={submit} pending={deciding} isDemo={USE_MOCKS} unavailable={Boolean(assetsError)}
-            mode={mode} onModeChange={changeMode} typesError={typesError} />
-          <div className="results-column">
+        <div className={'workspace ' + (showWorkspace ? 'workspace-results' : 'workspace-setup')} id="planner" tabIndex={-1}>
+          {experience === null ? <PlannerEntry onChoose={chooseExperience} />
+            : guidedOpen ? <GuidedPlanner assets={assets} draft={draft} onChange={changePlan}
+              mode={mode} onModeChange={changeMode} onSubmit={submit} pending={deciding}
+              unavailable={Boolean(assetsError)} typesError={typesError} step={guidedStep} onStepChange={changeGuidedStep}
+              onChooseDifferent={() => chooseExperience(null)} onUseQuick={() => chooseExperience('quick')} />
+              : <div className="planner-form-column">
+                <div className="planner-route-bar">
+                  {!showWorkspace && <button type="button" onClick={() => chooseExperience(null)}>Change how I fill this in</button>}
+                  <button type="button" onClick={() => chooseExperience('guided')}>{showWorkspace ? 'Edit step by step' : 'Use guided setup'}</button>
+                </div>
+                <InvestmentForm assets={assets} draft={draft} onChange={changePlan}
+                  onSubmit={submit} pending={deciding} isDemo={USE_MOCKS} unavailable={Boolean(assetsError)}
+                  mode={mode} onModeChange={changeMode} typesError={typesError}
+                  stage={showWorkspace ? 'workspace' : 'setup'} />
+              </div>}
+          {!showWorkspace && <>
+            {decideError && <div className="setup-error" id="setup-error" tabIndex={-1}>
+              <ErrorMessage message={decideError} onRetry={() => void analyze()} />
+            </div>}
+            <footer className="notice-bar setup-notice">
+              <Info size={15} aria-hidden="true" /><p>{DEFAULT_NOTICE}</p>
+            </footer>
+          </>}
+          {showWorkspace && <div className="results-column">
+            <div className="results-toolbar"><a href="#planner">Edit your plan <ArrowDown size={14} aria-hidden="true" /></a></div>
             {mode === 'plan'
               ? <PlanResult result={portfolio} pending={deciding} error={decideError} onRetry={() => void analyze()} />
               : <DecisionCard result={result} pending={deciding} error={decideError}
@@ -249,7 +313,7 @@ export default function App() {
               onRetry={() => assetsError ? setAssetsAttempt((attempt) => attempt + 1) : setPricesAttempt((attempt) => attempt + 1)}
               isDemo={USE_MOCKS} result={result} />
             </Suspense>}
-          </div>
+          </div>}
         </div>
 
         <details className="how-it-works" id="how-it-works">

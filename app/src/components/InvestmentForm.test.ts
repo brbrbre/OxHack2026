@@ -12,18 +12,40 @@ const props = {
 }
 
 describe('investment planner modes', () => {
+  it('keeps both entry paths and all choices available in the expanded setup form', () => {
+    for (const mode of ['asset', 'plan'] as const) {
+      const html = renderToStaticMarkup(createElement(InvestmentForm, { ...props, mode, stage: 'setup' }))
+      expect(html).toContain('<h1 id="plan-heading">Your plan</h1>')
+      expect(html).toContain('Start here')
+      expect(html).toContain('value="5000"')
+      expect(html).toContain('90 days')
+      expect(html).toContain('Moderate')
+      expect(html).toContain('name="planner-mode"')
+      expect(html).toContain(mode === 'asset' ? 'Get my answer' : 'Build my plan')
+    }
+  })
+
+  it('announces the first check while keeping its input values on screen', () => {
+    const html = renderToStaticMarkup(createElement(InvestmentForm, { ...props, mode: 'plan', stage: 'setup', pending: true }))
+    expect(html).toContain('role="status">Comparing your asset types. Your plan will appear here.')
+    expect(html).toContain('value="5000"')
+    expect(html).toContain('type="submit" disabled=""')
+  })
+
   it('keeps the single-asset form and its grouped catalogue', () => {
     const html = renderToStaticMarkup(createElement(InvestmentForm, { ...props, mode: 'asset' }))
     expect(html).toContain('I have an asset in mind')
     expect(html).toContain('Help me choose')
-    expect(html).toContain('<select id="asset"')
-    expect(html).toContain('HSBA.L')
+    expect(html).toContain('id="asset"')
+    expect(html).toContain('role="combobox"')
+    expect(html).toContain('value="S&amp;P 500 (SPDR) (SPY)"')
+    expect(html).toContain('name="asset" value="SPY"')
     expect(html).not.toContain('id="asset-types"')
   })
 
   it('uses exact API group keys as checkboxes in the plan form', () => {
     const html = renderToStaticMarkup(createElement(InvestmentForm, { ...props, mode: 'plan' }))
-    expect(html).not.toContain('<select id="asset"')
+    expect(html).not.toContain('role="combobox"')
     expect(html.match(/type="checkbox"/g)).toHaveLength(7)
     for (const group of Object.keys(assets)) expect(html).toContain('value="' + group + '"')
     expect(html).toContain('Build my plan')

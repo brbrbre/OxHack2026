@@ -11,6 +11,14 @@ const props = {
 }
 
 describe('forecast presentation', () => {
+  it('retains the supplied asset title and explicit symbol alongside its decorative logo', () => {
+    const html = renderToStaticMarkup(createElement(PriceChart, props))
+    const heading = html.split('<h2 id="chart-heading"')[1].split('</h2>')[0]
+    expect(heading).toContain('S&amp;P 500 (SPDR)')
+    expect(heading).toContain('aria-hidden="true"')
+    expect(html).toContain('<dt>Symbol</dt><dd>SPY</dd>')
+  })
+
   it('labels the terminal range and expected price with its calendar date and quote currency', () => {
     const html = renderToStaticMarkup(createElement(PriceChart, { ...props, result: decisionFixtures.invest }))
     expect(html).toContain('90% range in 30 days')
