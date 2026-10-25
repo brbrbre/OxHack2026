@@ -212,7 +212,7 @@ select:disabled { background: var(--paper); color: var(--ink-2); -webkit-text-fi
 .workspace-setup .setup-notice { margin-top: 24px; }
 .planner-entry { min-width: 0; padding-bottom: 8px; }
 .planner-entry h1 { font-size: clamp(36px, 4.6vw, 48px); }
-.planner-entry h1:focus, .guided-question h2:focus { outline: none; }
+#planner:focus, .planner-entry h1:focus, .guided-question h2:focus { outline: none; }
 .entry-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-top: 32px; }
 .entry-choice { position: relative; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; min-height: 270px; padding: 26px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); text-align: left; }
 .entry-choice:hover { border-color: var(--accent); background: var(--accent-soft); }
