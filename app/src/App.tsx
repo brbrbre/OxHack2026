@@ -305,6 +305,12 @@ export default function App() {
               ? <PlanResult result={portfolio} pending={deciding} error={decideError} onRetry={() => void analyze()} />
               : <DecisionCard result={result} pending={deciding} error={decideError}
                 onRetry={() => void analyze()} isDemo={USE_MOCKS} />}
+            {mode === 'asset' && <Suspense fallback={<section className="chart-panel chart-state" role="status">Loading the price chart…</section>}>
+            <PriceChart prices={prices} symbol={draft.simbolo} name={selectedAsset?.nombre ?? 'Price history'}
+              pending={pricesPending} error={pricesError ?? (assetsError ? 'Choose an asset once the asset list is available.' : null)}
+              onRetry={() => assetsError ? setAssetsAttempt((attempt) => attempt + 1) : setPricesAttempt((attempt) => attempt + 1)}
+              isDemo={USE_MOCKS} result={result} />
+            </Suspense>}
             <SummaryBlock summary={summary} pending={summaryPending} />
             <AskPanel result={mode === 'asset' ? result : null} plan={mode === 'plan' ? portfolio : null} />
             {mode === 'asset' && <RemindPanel result={result} />}
@@ -312,12 +318,6 @@ export default function App() {
               <Info size={15} aria-hidden="true" />
               <p>{(mode === 'plan' ? portfolio?.aviso : result?.aviso) ?? DEFAULT_NOTICE}</p>
             </footer>
-            {mode === 'asset' && <Suspense fallback={<section className="chart-panel chart-state" role="status">Loading the price chart…</section>}>
-            <PriceChart prices={prices} symbol={draft.simbolo} name={selectedAsset?.nombre ?? 'Price history'}
-              pending={pricesPending} error={pricesError ?? (assetsError ? 'Choose an asset once the asset list is available.' : null)}
-              onRetry={() => assetsError ? setAssetsAttempt((attempt) => attempt + 1) : setPricesAttempt((attempt) => attempt + 1)}
-              isDemo={USE_MOCKS} result={result} />
-            </Suspense>}
           </div>}
         </div>
 
