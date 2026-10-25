@@ -57,8 +57,8 @@ export default function App() {
   const showWorkspace = hasOpenedResults && !guidedOpen && experience !== null
 
   useEffect(() => {
-    const token = reminderFromSearch(search)
-    if (token) api.habitOpen(token).catch(() => { /* the plan still opens; the call may still come */ })
+    const reminder = reminderFromSearch(search)
+    if (reminder) api.habitOpen(reminder).catch(() => { /* the plan still opens; the call may still come */ })
   }, [])
 
   useEffect(() => {
