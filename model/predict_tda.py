@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 
 NOMBRE = "tendencia-tda"
-# Para medir sin ver el futuro: TDA_PARAMS=model/params_tda_hasta_2021.json (entrenado solo hasta nov 2021).
+# To measure without seeing the future: TDA_PARAMS=model/params_tda_hasta_2021.json (trained only up to Nov 2021).
 PARAMS = Path(os.getenv("TDA_PARAMS") or Path(__file__).with_name("params_tda.json"))
 MOMENTUM = (21, 63, 126, 252)
 MEDIAN_WINDOW = 252

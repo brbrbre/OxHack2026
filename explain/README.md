@@ -1,8 +1,8 @@
-# explain/ - resumen, tutor de dudas y audio (Rocco)
+# explain/ - summary, tutor and voice
 
-- `resumen.py` (Gemini): pasa la salida de decide() o plan() a dos o tres oraciones. Si el texto no trae el monto que calculó la regla, se descarta y se usa la plantilla.
-- `asesor.py` (Gemini): tutor "finanzas para principiantes". Contesta qué hace la empresa en pantalla y dudas generales de dinero, con ejemplos del día a día. No dice comprar ni vender, no predice precios y no cambia números.
-- `fichas.py`: ficha de cada uno de los 21 activos (qué es y dónde se ve en el día a día) y un glosario. Es la base que recibe Gemini y la respuesta cuando Gemini no está.
-- `voz.py` (ElevenLabs): MP3 del resumen, guardado en `data/cache/audio/`. Sin clave, la app usa la voz del navegador.
+- `resumen.py` (Gemini): turns the output of `decide()` or `plan()` into two or three plain sentences ("In short"). If the text lacks the amount the rule computed, it is dropped and the template is used.
+- `asesor.py` (Gemini): "Ask Horizon", a money tutor for beginners. It explains what the company on screen does and general money questions, with everyday examples. It never says buy or sell, never predicts prices and never changes a number.
+- `fichas.py`: a fact sheet for each of the 21 assets (what it is, where you see it in daily life) and a glossary. Gemini gets it as context, and it is the answer when Gemini is unavailable.
+- `voz.py` (ElevenLabs): the MP3 for "Listen" and for the reminder call, cached in `data/cache/audio/`. Without a key, the app uses the browser's voice.
 
-Rutas y contrato: `api/README.md`. Pruebas: `tests/test_resumen.py` (no usan internet).
+Routes and contract: `api/README.md`. Tests: `tests/test_resumen.py` (no internet needed).

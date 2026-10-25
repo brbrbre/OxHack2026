@@ -1,7 +1,7 @@
-"""Textos del recordatorio. Gemini redacta el WhatsApp con la respuesta de hoy; la llamada usa un guion fijo.
+"""Reminder texts. Gemini drafts the WhatsApp with today's answer; the call uses a fixed script.
 
-Gemini solo redacta: si su texto no trae el link o el nombre del activo, o pasa de 600
-caracteres, se usa la plantilla. Nunca decide ni cambia un número.
+Gemini only writes: if its text lacks the link or the asset's name, or is longer than 600
+characters, the template is used. It never decides or changes a number.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ def hechos(rec: dict, hoy: dict, link: str) -> dict:
         "today_chance_of_loss": f"{n['prob_perdida']:.0%}" if n.get("prob_perdida") is not None else "not computed for a plan",
         "review_link": link,
     }
-    if hoy.get("activos"):  # recordatorio de un plan de "Help me choose"
+    if hoy.get("activos"):  # reminder for a "Help me choose" plan
         datos["today_assets"] = hoy["activos"]
     return datos
 
@@ -67,7 +67,7 @@ def llamar_gemini(h: dict) -> str | None:
 
 
 def link_aparte(texto: str, link: str) -> str:
-    """El link va solo en la última línea: pegado al final de una oración cuesta más tocarlo."""
+    """The link goes alone on the last line: stuck to the end of a sentence it is harder to tap."""
     i = texto.rfind(link)
     antes, despues = texto[:i].rstrip(), texto[i + len(link):].strip(" .")
     return f"{antes}\n\n{link}" + (f"\n{despues}" if despues else "")
@@ -86,7 +86,7 @@ def whatsapp(rec: dict, hoy: dict, link: str, llamar=llamar_gemini) -> tuple[str
 
 
 def guion_llamada(rec: dict) -> str:
-    """Texto fijo para la voz de ElevenLabs: el mismo recordatorio siempre suena igual."""
+    """Fixed script for the ElevenLabs voice: the same reminder always sounds the same."""
     situacion = (f"The waiting period for {rec['nombre']} has ended." if rec["decision"] != "INVERTIR"
                  else f"Your {rec['plazo_dias']}-day plan for {rec['nombre']} has ended.")
     return ("Hello, this is Horizon, your money habit reminder. " + situacion +

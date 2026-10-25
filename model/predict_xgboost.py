@@ -17,20 +17,20 @@ def predict(precios, plazo_dias, es_cripto=False):
     if plazo_dias <= 0:
         raise ValueError("plazo_dias debe ser positivo.")
 
-    # Usar únicamente los precios recibidos
+    # Use only the prices received
     precios = precios.astype(float).sort_index().dropna()
     precios = precios[~precios.index.duplicated(keep="last")]
 
     if not np.isfinite(precios).all() or (precios <= 0).any():
-        raise ValueError("Los precios deben ser positivos y finitos.")
+        raise ValueError("Prices must be positive and finite.")
 
-    # Conversión aproximada de calendario a sesiones
+    # Approximate conversion from calendar days to sessions
     horizonte = max(
         1,
         int(round(plazo_dias * (1 if es_cripto else 252 / 365)))
     )
 
-    # Variables independientes: solo información conocida
+    # Features: only information known at the time
     variables = pd.DataFrame(index=precios.index)
     variables["rendimiento_hoy"] = precios.pct_change(fill_method=None)
     variables["rendimiento_ayer"] = variables["rendimiento_hoy"].shift(1)
@@ -43,19 +43,19 @@ def predict(precios, plazo_dias, es_cripto=False):
         precios.shift(-horizonte) / precios - 1
     ).rename("objetivo")
 
-    # Las últimas filas sin etiqueta quedan fuera del entrenamiento
+    # The last rows have no label yet and are left out of training
     entrenamiento = variables.join(objetivo).dropna()
 
     if len(entrenamiento) < 100:
-        raise ValueError("Historial insuficiente para este plazo.")
+        raise ValueError("Not enough history for this horizon.")
 
     X = entrenamiento.drop(columns="objetivo")
     y = entrenamiento["objetivo"]
 
-    # Última observación conocida: se utiliza para predecir
+    # Last known observation: used to predict
     ultima = variables.iloc[[-1]]
 
-    # 1. Tu regresión actual: rendimiento esperado
+    # 1. Regression: expected return
     regresor = XGBRegressor(
         objective="reg:squarederror",
         **PARAMETROS
@@ -65,7 +65,7 @@ def predict(precios, plazo_dias, es_cripto=False):
     rendimiento = float(regresor.predict(ultima)[0])
     rendimiento = max(rendimiento, -0.999999)
 
-    # 2. Cuantiles para construir el intervalo
+    # 2. Quantiles to build the interval
     cuantiles = XGBRegressor(
         objective="reg:quantileerror",
         quantile_alpha=np.array([0.05, 0.50, 0.95]),
@@ -80,7 +80,7 @@ def predict(precios, plazo_dias, es_cripto=False):
 
     volatilidad = (alto - bajo) / 3.29
 
-    # 3. Clasificación: probabilidad estimada de pérdida
+    # 3. Classification: estimated chance of loss
     y_baja = (y < 0).astype(int)
 
     if y_baja.nunique() < 2:

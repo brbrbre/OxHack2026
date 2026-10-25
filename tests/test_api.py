@@ -1,4 +1,4 @@
-"""Pruebas del API con precios sintéticos. No usan internet."""
+"""API tests with synthetic prices. No internet needed."""
 
 import numpy as np
 import pandas as pd
@@ -18,7 +18,7 @@ def _serie(drift: float, n: int = 1000) -> pd.Series:
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setattr(main, "get_close", lambda s: _serie(0.001))
-    # Las pruebas del API fijan el baseline: no dependen de que model/predict.py exista.
+    # API tests pin the baseline: they don't depend on model/predict.py.
     monkeypatch.setattr(main, "load_model", lambda: (None, baseline.NOMBRE))
     return TestClient(main.app)
 

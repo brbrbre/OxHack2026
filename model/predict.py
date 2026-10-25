@@ -1,7 +1,7 @@
-"""Modelo que usa la API. Principal: tendencia + TDA de Brisma. Respaldo: XGBoost de Felipe.
+"""The model the API uses. Main: Brisma's Trend + TDA. Backup: Felipe's XGBoost.
 
-Se elige con la variable MODELO (por defecto "tda"; "xgboost" para el respaldo).
-Para volver al baseline, borrar este archivo.
+Picked with the MODELO variable (default "tda"; "xgboost" for the backup).
+Without this file, the API falls back to the baseline.
 """
 
 import os

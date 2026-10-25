@@ -1,21 +1,21 @@
-"""Backtest en dinero: ¿le habría ido mejor a quien siguió la app?
+"""Money backtest: would someone who followed the app have done better?
 
-Para cada fecha de inicio del pasado:
-1. El modelo predice usando SOLO precios hasta ese día (sin ver el futuro).
-2. La regla de decisión responde INVERTIR, ESPERAR o NO_POR_AHORA.
-3. Se mide qué pasó de verdad en los siguientes `plazo_dias`.
+For each past start date:
+1. The model predicts using ONLY prices up to that day (no look-ahead).
+2. The decision rule answers INVERTIR, ESPERAR or NO_POR_AHORA.
+3. We measure what really happened over the next `plazo_dias`.
 
-Se compara contra "invertir siempre": meter el monto en cada fecha de inicio.
-Las ventanas no se enciman (una nueva cada `plazo_dias`), para no contar dos
-veces el mismo movimiento. Si la app dice ESPERAR o NO_POR_AHORA, ese dinero
-se queda en efectivo (rendimiento 0).
+The yardstick is "always invest": the full amount at every start date.
+Windows don't overlap (a new one every `plazo_dias`), so the same move is not
+counted twice. If the app says ESPERAR or NO_POR_AHORA, that money stays
+in cash (0% return).
 
-Limitaciones que se dicen en el pitch:
-- El calendario de eventos solo tiene fechas desde oct 2026, así que la regla
-  de "esperar a la Fed" no participa en el pasado.
-- No cuenta comisiones ni impuestos.
+Limitations stated in the pitch:
+- The event calendar only has dates from October 2026, so the "wait for the
+  Fed" rule plays no part in the past.
+- No trading costs or taxes.
 
-Uso:
+Usage:
     python -m decision.backtest SPY BTCUSDT WALMEX.MX --plazo 30 --anios 10
     python -m decision.backtest --todos --modelo baseline
 """
@@ -37,7 +37,7 @@ from decision.signals import tendencia
 
 
 def load_predictor(nombre: str):
-    """'baseline' usa api/baseline.py; 'model' usa model/predict.py."""
+    """'baseline' uses api/baseline.py; 'model' uses model/predict.py."""
     if nombre == "baseline":
         from api import baseline
         return baseline.predict, baseline.NOMBRE
@@ -56,28 +56,28 @@ def run(precios: pd.Series, simbolo: str, plazo_dias: int = 30, anios: int = 10,
         es_cripto: bool = False, min_historia: int = 252,
         desde: str | None = None, hasta: str | None = None, decidir=None,
         params: dict | None = None) -> pd.DataFrame:
-    """Una fila por ventana: fecha, decisión, rendimiento real y P&L de cada estrategia."""
+    """One row per window: date, decision, real return and P&L of each strategy."""
     if predict is None:
         predict, _ = load_predictor("baseline")
     decidir = decidir or decide
     precios = precios.dropna().sort_index()
     idx = precios.index
-    # Rejilla de fechas en calendario: con el mismo `desde`, todos los activos
-    # deciden en las mismas fechas (así se pueden comparar y remuestrear por fecha).
+    # Calendar date grid: with the same `desde`, every asset decides on the same
+    # dates (so they can be compared and resampled by date).
     t = pd.Timestamp(desde) if desde is not None else idx[-1] - timedelta(days=365 * anios)
     limite = min(pd.Timestamp(hasta), idx[-1]) if hasta is not None else idx[-1]
     filas = []
     while True:
-        # Se decide con el primer cierre disponible desde t...
+        # Decide with the first close available from t...
         pos = idx.searchsorted(t)
         if pos + 1 >= len(idx):
             break
-        # ...y se entra al cierre SIGUIENTE: la decisión no puede usar el precio de entrada.
+        # ...and enter at the NEXT close: the decision cannot use the entry price.
         entrada = idx[pos + 1]
         salida_pos = idx.searchsorted(entrada + timedelta(days=plazo_dias))
         if salida_pos >= len(idx) or idx[salida_pos] > limite:
             break
-        ventana = t.date()  # fecha de la rejilla: igual para todos los activos
+        ventana = t.date()  # grid date: the same for every asset
         t = t + timedelta(days=plazo_dias)
         if pos < min_historia:
             continue
@@ -86,11 +86,11 @@ def run(precios: pd.Series, simbolo: str, plazo_dias: int = 30, anios: int = 10,
         try:
             pred = _call(predict, pasado, plazo_dias, es_cripto)
         except ValueError:
-            # El modelo pide más historia que la que hay en esta fecha (ej. Solana en 2021): se salta la ventana.
+            # The model needs more history than exists at this date (e.g. Solana in 2021): skip the window.
             continue
         d = decidir(pred, monto, plazo_dias, simbolo, hoy=idx[pos].date(), perfil=perfil,
                     tendencia=tendencia(pasado), params=params)
-        # Fracción del monto que la app manda invertir (0 = efectivo, 1 = todo).
+        # Share of the amount the app says to invest (0 = cash, 1 = all of it).
         frac = float(d["numeros"].get("fraccion", 1.0 if d["decision"] == INVERTIR else 0.0))
         filas.append({
             "ventana": ventana,
@@ -112,13 +112,13 @@ def run(precios: pd.Series, simbolo: str, plazo_dias: int = 30, anios: int = 10,
 
 def resumen(df: pd.DataFrame, monto: float = 1000.0, plazo_dias: int = 30,
             perfil: str = "moderado") -> dict:
-    """Métricas para el pitch.
+    """Metrics for the pitch.
 
-    Compara tres estrategias con el mismo monto por ventana:
-    - siempre: invertir todo en cada ventana (comprar y mantener).
-    - app: invertir la fracción que dice la app; el resto en efectivo a 0 %.
-    - misma exposición: invertir siempre la fracción PROMEDIO de la app. Si la
-      app no le gana a esta, su valor está en el tamaño, no en el momento.
+    Compares three strategies with the same amount per window:
+    - siempre (always): invest everything in every window (buy and hold).
+    - app: invest the share the app suggests; the rest stays in cash at 0%.
+    - misma exposicion (same exposure): always invest the app's AVERAGE share. If
+      the app can't beat this, its value is in sizing, not timing.
     """
     if df.empty:
         return {"ventanas": 0}
@@ -149,7 +149,7 @@ def resumen(df: pd.DataFrame, monto: float = 1000.0, plazo_dias: int = 30,
         "caida_max_app": caida_max(r_app),
         "p5_siempre": float(r_siempre.quantile(0.05)),
         "p5_app": float(r_app.quantile(0.05)),
-        # Ventanas en que la pérdida pasó la tolerancia del perfil. Debería ser ~5 %.
+        # Windows where the loss exceeded the profile's tolerance. Should be about 5%.
         "rebases_siempre": float((r_siempre < -tol).mean()),
         "rebases_app": float((r_app < -tol).mean()),
     }
@@ -171,26 +171,26 @@ def main(argv: list[str]) -> int:
     from data.assets import all_symbols
     from data.fetch import get_close, is_crypto
 
-    ap = argparse.ArgumentParser(description="Backtest de la regla de decisión")
+    ap = argparse.ArgumentParser(description="Backtest of the decision rule")
     ap.add_argument("simbolos", nargs="*", default=["SPY", "BTCUSDT", "WALMEX.MX"])
-    ap.add_argument("--todos", action="store_true", help="todo el catálogo")
+    ap.add_argument("--todos", action="store_true", help="the whole catalogue")
     ap.add_argument("--plazo", type=int, default=30)
     ap.add_argument("--anios", type=int, default=10)
     ap.add_argument("--monto", type=float, default=1000.0)
     ap.add_argument("--perfil", default="moderado", choices=["conservador", "moderado", "agresivo"])
     ap.add_argument("--modelo", default="baseline", choices=["baseline", "model"])
-    ap.add_argument("--desde", default=None, help="fecha inicial, ej. 2022-01-01")
-    ap.add_argument("--hasta", default=None, help="fecha final, ej. 2021-12-31")
+    ap.add_argument("--desde", default=None, help="start date, e.g. 2022-01-01")
+    ap.add_argument("--hasta", default=None, help="end date, e.g. 2021-12-31")
     a = ap.parse_args(argv)
 
     predict, nombre = load_predictor(a.modelo)
     simbolos = all_symbols() if a.todos else a.simbolos
-    print(f"Modelo: {nombre} | plazo {a.plazo} días | últimos {a.anios} años | "
-          f"${a.monto:,.0f} por ventana | perfil {a.perfil}\n")
-    cols = ["ventanas", "exposición", "P&L siempre", "P&L app", "P&L misma exp.",
-            "Sharpe siempre", "Sharpe app", "caída máx siempre", "caída máx app",
-            "rebases siempre", "rebases app"]
-    print(" | ".join(["activo"] + cols))
+    print(f"Model: {nombre} | horizon {a.plazo} days | last {a.anios} years | "
+          f"${a.monto:,.0f} per window | profile {a.perfil}\n")
+    cols = ["windows", "exposure", "P&L always", "P&L app", "P&L same exp.",
+            "Sharpe always", "Sharpe app", "max drawdown always", "max drawdown app",
+            "over tolerance always", "over tolerance app"]
+    print(" | ".join(["asset"] + cols))
     total_s = total_a = total_c = 0.0
     for s in simbolos:
         df = run(get_close(s), s, a.plazo, a.anios, a.monto, a.perfil, predict,
@@ -208,7 +208,7 @@ def main(argv: list[str]) -> int:
             _fmt(r["caida_max_siempre"], "$"), _fmt(r["caida_max_app"], "$"),
             _fmt(r["rebases_siempre"], "p"), _fmt(r["rebases_app"], "p"),
         ]))
-    print(f"\nTotal P&L: siempre {_fmt(total_s, '$')} | app {_fmt(total_a, '$')} | misma exposición {_fmt(total_c, '$')}")
+    print(f"\nTotal P&L: always {_fmt(total_s, '$')} | app {_fmt(total_a, '$')} | same exposure {_fmt(total_c, '$')}")
     return 0
 
 
