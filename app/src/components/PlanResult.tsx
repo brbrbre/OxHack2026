@@ -1,4 +1,4 @@
-import { Check, Clock3, LoaderCircle, X } from 'lucide-react'
+import { Check, ChevronDown, Clock3, LoaderCircle, X } from 'lucide-react'
 import type { PlanResponse } from '../api/types'
 import { money, percentage } from '../lib/format'
 import { DECISION_LABELS } from '../lib/labels'
@@ -98,7 +98,9 @@ export default function PlanResult({ result, pending, error, onRetry }: Props) {
                 <span className="allocation-figures"><span>{percentage(cashWeight)}</span><strong>{money(cash)}</strong></span>
               </li>
             </ul>
-            <div className="portfolio-table-wrap">
+            <details className="allocation-details">
+              <summary>View allocation table</summary>
+              <div className="portfolio-table-wrap">
               <table className="portfolio-table">
                 <caption>Suggested allocation</caption>
                 <thead><tr><th scope="col">Asset</th><th scope="col">Amount</th><th scope="col">Weight</th></tr></thead>
@@ -113,7 +115,8 @@ export default function PlanResult({ result, pending, error, onRetry }: Props) {
                   <tr><td><span className="portfolio-asset-name">Cash</span></td><td>{money(cash)}</td><td>{percentage(cashWeight)}</td></tr>
                 </tbody>
               </table>
-            </div>
+              </div>
+            </details>
           </section>
 
           <section className="plan-risk" aria-labelledby="plan-risk-heading">
@@ -122,12 +125,16 @@ export default function PlanResult({ result, pending, error, onRetry }: Props) {
           </section>
 
           <div className="plan-classifications">
-            {groups.map((group) => <section className={'plan-classification ' + group.className} key={group.code} aria-labelledby={group.id}>
+            {groups.map((group) => <details className={'plan-classification ' + group.className} key={group.code}
+              open={group.code === 'INVERTIR'} aria-labelledby={group.id}>
+              <summary className="classification-summary">
               <h3 id={group.id}><span className={'decision-badge ' + group.className}>
                 <group.Icon size={15} strokeWidth={2} aria-hidden="true" />{DECISION_LABELS[group.code]}</span>
                 <span className="classification-count">{group.assets.length} {group.assets.length === 1 ? 'asset' : 'assets'}
                   {group.code === 'INVERTIR' && group.assets.length !== assetCount ? ', ' + assetCount + ' in the plan' : ''}</span>
               </h3>
+                <ChevronDown size={16} className="classification-chevron" aria-hidden="true" />
+              </summary>
               {group.assets.length ? <ul className="plan-candidates">
                 {group.assets.map((asset) => <li key={asset.simbolo}>
                   <div className="candidate-heading asset-name-row"><AssetLogo symbol={asset.simbolo} size="small" />
@@ -137,7 +144,7 @@ export default function PlanResult({ result, pending, error, onRetry }: Props) {
                   {asset.fuera_del_plan && <p className="candidate-note">Not in the plan: {asset.fuera_del_plan}</p>}
                 </li>)}
               </ul> : <p className="empty-classification">No assets in this group.</p>}
-            </section>)}
+            </details>)}
           </div>
 
           <section className="plan-summary-copy" aria-labelledby="plan-summary-heading">

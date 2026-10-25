@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { LoaderCircle, MessageCircleQuestionMark, Send } from 'lucide-react'
+import { ChevronDown, LoaderCircle, MessageCircleQuestionMark, Send } from 'lucide-react'
 import { api } from '../api/client'
 import type { AskTurn, DecideResponse, PlanResponse } from '../api/types'
 import { askContext, suggestedQuestions } from '../lib/askContext'
@@ -26,6 +26,7 @@ export default function AskPanel({ result, plan }: Props) {
     setTurns([])
     setPending(false)
     setQuestion('')
+    return () => controller.current?.abort()
   }, [result, plan])
 
   if (!result && !plan) return null
@@ -64,8 +65,12 @@ export default function AskPanel({ result, plan }: Props) {
   const suggestions = suggestedQuestions(result, plan).filter((item) => !asked.has(item))
 
   return (
-    <section className="ask-panel" aria-labelledby="ask-heading">
-      <h3 id="ask-heading"><MessageCircleQuestionMark size={18} aria-hidden="true" /> Ask Horizon</h3>
+    <details className="ask-panel optional-panel" aria-labelledby="ask-heading">
+      <summary className="optional-panel-summary">
+        <h3 id="ask-heading"><MessageCircleQuestionMark size={18} aria-hidden="true" /> Ask Horizon</h3>
+        <ChevronDown className="optional-panel-chevron" size={16} aria-hidden="true" />
+      </summary>
+      <div className="optional-panel-body">
       <p className="ask-intro">Learn what your money would be doing. Ask about this asset or any money idea.</p>
       {turns.length > 0 && <ol className="ask-thread" aria-live="polite">
         {turns.map((turn, index) => <li key={index}>
@@ -86,6 +91,7 @@ export default function AskPanel({ result, plan }: Props) {
         </button>
       </form>
       <p className="ask-note">Answers by Gemini, for learning. They never change Horizon's numbers and are not financial advice.</p>
-    </section>
+      </div>
+    </details>
   )
 }
