@@ -3,7 +3,7 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def sin_claves_de_sponsors(monkeypatch, tmp_path):
-    """Las pruebas nunca llaman a Gemini, ElevenLabs ni Tiger Data, aunque .env tenga claves."""
+    """Tests never call Gemini, ElevenLabs or Tiger Data, even if .env has keys."""
     for k in ("GEMINI_API_KEY", "ELEVENLABS_API_KEY", "TIGER_DATABASE_URL", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN",
               "HABITO_DEMO", "HABITO_PERMITIDOS", "HABITO_LLAMADA_A", "HABITO_CANAL", "DEMO_PHONE", "PUBLIC_URL", "HABITO_ESPERA_MIN"):
         monkeypatch.delenv(k, raising=False)

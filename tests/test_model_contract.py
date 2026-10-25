@@ -1,10 +1,10 @@
-"""Contrato del modelo del equipo (model/predict.py).
+"""Contract of the team's model (model/predict.py).
 
-Se salta solo mientras model/predict.py no exista. En cuanto exista, revisa:
-- la forma de la respuesta (lo que piden el API y la regla de decisión);
-- que no vea el futuro: solo puede usar los precios que recibe;
-- que dé lo mismo si se llama dos veces;
-- que sea rápido, porque el backtest lo llama ~1,200 veces.
+Skipped only while model/predict.py doesn't exist. Once it exists, it checks:
+- the shape of the answer (what the API and the decision rule need);
+- that it doesn't see the future: it may only use the prices it receives;
+- that two calls give the same result;
+- that it is fast, because the backtest calls it about 1,200 times.
 """
 
 import importlib.util
@@ -16,7 +16,7 @@ import pandas as pd
 import pytest
 
 if importlib.util.find_spec("model.predict") is None:
-    pytest.skip("model/predict.py todavía no existe", allow_module_level=True)
+    pytest.skip("model/predict.py doesn't exist yet", allow_module_level=True)
 
 from model import predict as modelo  # noqa: E402
 
@@ -53,7 +53,7 @@ def test_no_lee_datos_por_su_cuenta(monkeypatch):
     import data.fetch as fetch
 
     def prohibido(*a, **k):
-        raise AssertionError("predict() leyó datos por su cuenta: solo puede usar `precios`")
+        raise AssertionError("predict() read data on its own: it may only use `precios`")
 
     for nombre in ("get_close", "get_prices", "load", "fetch_many", "fetch_yahoo", "fetch_binance"):
         monkeypatch.setattr(fetch, nombre, prohibido)
@@ -76,4 +76,4 @@ def test_es_rapido():
     s = _serie()
     t0 = time.perf_counter()
     _llamar(s)
-    assert time.perf_counter() - t0 < 2.0, "más de 2 s por llamada: el backtest tardaría más de 40 min"
+    assert time.perf_counter() - t0 < 2.0, "over 2 s per call: the backtest would take more than 40 min"

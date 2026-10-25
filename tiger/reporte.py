@@ -1,6 +1,6 @@
-"""Calificación de las predicciones, calculada dentro de Tiger Data con time_bucket.
+"""Grades the predictions, computed inside Tiger Data with time_bucket.
 
-Uso: python -m tiger.reporte [--origen backtest|live] [--cada '3 months']
+Usage: python -m tiger.reporte [--origen backtest|live] [--cada '3 months']
 """
 
 from __future__ import annotations
@@ -28,12 +28,12 @@ def main(argv: list[str]) -> int:
     from dotenv import load_dotenv
 
     load_dotenv()
-    ap = argparse.ArgumentParser(description="Calificación en Tiger Data")
+    ap = argparse.ArgumentParser(description="Grading in Tiger Data")
     ap.add_argument("--origen", default="backtest", choices=["backtest", "live"])
     ap.add_argument("--cada", default="6 months")
     a = ap.parse_args(argv)
     if not db.url():
-        print("Falta TIGER_DATABASE_URL en .env")
+        print("TIGER_DATABASE_URL is missing from .env")
         return 2
     with db.conectar() as conn, conn.cursor() as cur:
         cur.execute(CONSULTA, {"cada": a.cada, "origen": a.origen})
@@ -41,8 +41,8 @@ def main(argv: list[str]) -> int:
         cur.execute("SELECT count(*), count(*) FILTER (WHERE real IS NULL) FROM predicciones WHERE origen = %s",
                     (a.origen,))
         total, pendientes = cur.fetchone()
-    print(f"Origen {a.origen}: {total} predicciones, {pendientes} esperando su resultado\n")
-    print(f"{'periodo':<12}{'n':>6}{'dentro 90%':>12}{'Brier':>8}{'exposición':>12}{'siempre':>10}{'app':>9}")
+    print(f"Source {a.origen}: {total} predictions, {pendientes} waiting for their outcome\n")
+    print(f"{'period':<12}{'n':>6}{'inside 90%':>12}{'Brier':>8}{'exposure':>12}{'always':>10}{'app':>9}")
     for p, n, dentro, brier, exp, siempre, app in filas:
         print(f"{p.date()!s:<12}{n:>6}{dentro:>12.0%}{brier:>8.3f}{exp:>12.0%}{siempre:>+10.2%}{app:>+9.2%}")
     return 0

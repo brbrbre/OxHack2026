@@ -12,3 +12,13 @@ export const PROFILE_LABELS = {
   moderado: 'Moderate',
   agresivo: 'Aggressive',
 } as const satisfies Record<RiskProfile, string>
+
+/** Display names for the prediction models; the API sends their internal ids. */
+const MODEL_LABELS: Record<string, string> = {
+  'tendencia-tda': 'Trend + TDA',
+  xgboost: 'XGBoost',
+}
+
+export function modelLabel(id: string): string {
+  return MODEL_LABELS[id] ?? id
+}

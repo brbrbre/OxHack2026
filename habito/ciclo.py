@@ -1,11 +1,11 @@
-"""El ciclo del hábito: manda los recordatorios vencidos y llama si nadie abrió el link.
+"""The habit cycle: sends due reminders, and calls if nobody opened the link.
 
-Configuración (en .env):
-- PUBLIC_URL: dirección pública de la app (links del WhatsApp y MP3 de la llamada).
-- HABITO_ESPERA_MIN: minutos sin abrir el link antes de llamar (por defecto 1440; en la demo, 2).
-- HABITO_PERMITIDOS: teléfonos a los que se puede escribir, separados por coma (por defecto DEMO_PHONE).
-- HABITO_LLAMADA_A: "whatsapp=voz" separados por coma, para llamar a otro número que el del WhatsApp
-  (ej. el WhatsApp vive en una línea de México que no suena en el Reino Unido).
+Settings (in .env):
+- PUBLIC_URL: the app's public address (WhatsApp links and the call's MP3).
+- HABITO_ESPERA_MIN: minutes without opening the link before calling (default 1440; 2 in the demo).
+- HABITO_PERMITIDOS: comma-separated phone numbers that may receive messages (default DEMO_PHONE).
+- HABITO_LLAMADA_A: comma-separated "whatsapp=voice" pairs, to call a different number than the WhatsApp one
+  (e.g. the WhatsApp lives on a Mexican line that doesn't ring in the UK).
 """
 
 from __future__ import annotations
@@ -33,8 +33,8 @@ PAIS_MEXICO = "52"
 
 
 def telefono_llamada(telefono: str) -> str:
-    """A qué número llamar. Usa HABITO_LLAMADA_A si hay pareja; si no, quita el 1 de los celulares de México:
-    WhatsApp los escribe con un 1 después del código de país, pero para marcar va sin él."""
+    """Which number to call. Uses HABITO_LLAMADA_A if there is a pair; otherwise drops the 1 from Mexican
+    mobiles: WhatsApp writes them with a 1 after the country code, but dialling goes without it."""
     for par in (os.getenv("HABITO_LLAMADA_A") or "").split(","):
         if "=" in par:
             wa, voz = (x.strip().replace(" ", "") for x in par.split("=", 1))
@@ -57,10 +57,10 @@ SIN_RESPUESTA = ("busy", "no-answer", "failed", "canceled")
 
 
 def revisar(conn, rec: dict, cuando: datetime, consultar=None) -> dict:
-    """Pregunta a Twilio qué pasó de verdad con el mensaje y la llamada, y lo guarda.
+    """Asks Twilio what really happened with the message and the call, and stores it.
 
-    Que Twilio acepte la llamada no quiere decir que alguien contestó: "llamado" solo queda con
-    "completed"; busy, no-answer, failed o canceled pasan a "sin_respuesta".
+    Twilio accepting a call doesn't mean anyone answered: "llamado" is only set on "completed";
+    busy, no-answer, failed or canceled become "sin_respuesta".
     """
     consultar = consultar or twilio
     cambios = {}
@@ -79,8 +79,8 @@ def revisar(conn, rec: dict, cuando: datetime, consultar=None) -> dict:
 
 
 def abrir(conn, rec: dict, cuando: datetime, colgar=None) -> None:
-    """La persona abrió el link: cuenta como abierto y, si la llamada ya salió, se corta.
-    Es uno u otro: link abierto o llamada, nunca los dos."""
+    """The person opened the link: it counts as opened and, if the call already went out, it is cut.
+    It is one or the other: an opened link or a call, never both."""
     if rec["abierto_en"]:
         return
     cambios = {"abierto_en": almacen.iso(cuando)}
@@ -96,13 +96,13 @@ def abrir(conn, rec: dict, cuando: datetime, colgar=None) -> None:
 
 
 def procesar(conn, cuando: datetime, decidir, enviar=None, voz=None) -> dict:
-    """Una vuelta del ciclo. `decidir(rec)` devuelve la respuesta de /api/decide de hoy para ese recordatorio."""
+    """One pass of the cycle. `decidir(rec)` returns today's answer for that reminder."""
     enviar = enviar or twilio
     hechos = {"enviados": 0, "llamadas": 0, "errores": 0}
     for rec in almacen.por_revisar(conn):
         try:
             revisar(conn, rec, cuando, enviar)
-        except Exception:  # si Twilio no responde, se vuelve a preguntar en la siguiente vuelta
+        except Exception:  # if Twilio doesn't answer, ask again on the next pass
             pass
     for rec in almacen.vencidos(conn, cuando):
         try:
@@ -111,18 +111,18 @@ def procesar(conn, cuando: datetime, decidir, enviar=None, voz=None) -> dict:
             almacen.actualizar(conn, rec["token"], estado="enviado", enviado_en=almacen.iso(cuando),
                                mensaje_sid=sid, mensaje_estado="queued" if sid else None)
             hechos["enviados"] += 1
-        except Exception as e:  # se guarda el motivo para verlo en /api/habit/{token}
+        except Exception as e:  # the reason is stored, visible at /api/habit/{token}
             almacen.actualizar(conn, rec["token"], estado="error", error=str(e)[:300])
             hechos["errores"] += 1
     for rec in almacen.sin_abrir(conn, cuando, espera()):
         guion = mensajes.guion_llamada(rec)
         try:
             hay_audio = voz is not None and voz.audio(guion) is not None
-            # El audio tarda unos segundos: si abrió el link mientras tanto, ya no se llama.
+            # The audio takes a few seconds: if the link was opened meanwhile, no call.
             if almacen.obtener(conn, rec["token"])["abierto_en"]:
                 continue
             sid = enviar.llamar(telefono_llamada(rec["telefono"]), audio_url(rec) if hay_audio else None, guion)
-            if almacen.obtener(conn, rec["token"])["abierto_en"]:  # lo abrió mientras salía la llamada
+            if almacen.obtener(conn, rec["token"])["abierto_en"]:  # opened while the call was going out
                 if sid:
                     enviar.colgar(sid, "queued")
                 almacen.actualizar(conn, rec["token"], llamada_sid=sid, llamada_estado="canceled" if sid else None)

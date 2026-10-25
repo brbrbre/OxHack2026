@@ -1,4 +1,4 @@
-"""Audio del resumen con ElevenLabs. Si no hay clave o falla, la app usa la voz del navegador."""
+"""ElevenLabs audio for "Listen" and the reminder call. Without a key, or on failure, the app uses the browser's voice."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ CACHE = Path(__file__).resolve().parent.parent / "data" / "cache" / "audio"
 
 
 def audio(texto: str) -> bytes | None:
-    """MP3 del texto, guardado en disco para no pagar dos veces el mismo resumen."""
+    """MP3 of the text, cached on disk so the same summary is never paid for twice."""
     archivo = CACHE / (hashlib.sha256(f"{VOZ}|{MODELO}|{texto}".encode()).hexdigest()[:24] + ".mp3")
     if archivo.exists():
         return archivo.read_bytes()

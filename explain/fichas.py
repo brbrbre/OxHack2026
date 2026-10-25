@@ -1,8 +1,8 @@
-"""Ficha de cada activo: qué es y dónde se ve en el día a día.
+"""A fact sheet per asset: what it is and where you see it in daily life.
 
-Es la base que recibe Gemini para contestar dudas (así no inventa) y la
-respuesta local cuando Gemini no está. Solo hechos generales y estables, sin
-cifras que caduquen. Textos en inglés porque los ve el usuario.
+Gemini gets it as context to answer questions (so it doesn't make things up), and
+it is the local answer when Gemini is unavailable. Only general, stable facts,
+with no figures that go out of date.
 """
 
 FICHAS: dict[str, dict[str, str]] = {
@@ -100,7 +100,7 @@ def texto_ficha(simbolo: str) -> str | None:
     return f"{f['que_es']} {f['dia_a_dia']}"
 
 
-# Glosario para cuando Gemini no está: (palabras que lo activan, respuesta).
+# Glossary for when Gemini is unavailable: (trigger words, answer).
 GLOSARIO: list[tuple[tuple[str, ...], str]] = [
     (("dividend",), "A dividend is part of a company's profit paid to its shareholders, often a few times a year. "
                     "Not every company pays one, and crypto never does."),

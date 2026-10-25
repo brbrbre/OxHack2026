@@ -5,7 +5,7 @@ import { api } from './api/client'
 import { assetTypesError, errorMessage, isAbortError } from './api/errors'
 import type { AssetsResponse, DecideResponse, PlanResponse, PricesResponse, SummaryResponse } from './api/types'
 import { DEFAULT_NOTICE, USE_MOCKS } from './config'
-import { planFromSearch, reminderFromSearch } from './lib/planLink'
+import { modeFromSearch, planFromSearch, reminderFromSearch } from './lib/planLink'
 import InvestmentForm from './components/InvestmentForm'
 import type { PlanDraft, PlannerMode } from './components/InvestmentForm'
 import PlannerEntry from './components/PlannerEntry'
@@ -46,7 +46,7 @@ export default function App({ active = true, onHome }: AppProps = {}) {
   const [assetsError, setAssetsError] = useState<string | null>(null)
   const [assetsAttempt, setAssetsAttempt] = useState(0)
   const [draft, setDraft] = useState<PlanDraft>(() => planFromSearch(currentSearch(), defaultPlan))
-  const [mode, setMode] = useState<PlannerMode>('asset')
+  const [mode, setMode] = useState<PlannerMode>(() => modeFromSearch(currentSearch()))
   const [prices, setPrices] = useState<PricesResponse | null>(null)
   const [pricesPending, setPricesPending] = useState(true)
   const [pricesError, setPricesError] = useState<string | null>(null)
@@ -59,7 +59,10 @@ export default function App({ active = true, onHome }: AppProps = {}) {
   const [decideError, setDecideError] = useState<string | null>(null)
   const [typesError, setTypesError] = useState<string | null>(null)
   const [hasOpenedResults, setHasOpenedResults] = useState(false)
-  const [experience, setExperience] = useState<Experience | null>(() => new URLSearchParams(currentSearch()).has('simbolo') ? 'quick' : null)
+  const [experience, setExperience] = useState<Experience | null>(() => {
+    const q = new URLSearchParams(currentSearch())
+    return q.has('simbolo') || q.get('modo') === 'plan' ? 'quick' : null
+  })
   const [guidedOpen, setGuidedOpen] = useState(false)
   const [guidedStep, setGuidedStep] = useState<GuidedStep>(0)
   const hasChosenExperience = useRef(experience !== null)
@@ -372,7 +375,8 @@ export default function App({ active = true, onHome }: AppProps = {}) {
             </Suspense>}
             {active && <SummaryBlock summary={summary} pending={summaryPending} />}
             <AskPanel result={usesPortfolio ? null : result} plan={usesPortfolio ? portfolio : null} />
-            {!usesPortfolio && <RemindPanel result={result} />}
+            {!multiple && <RemindPanel result={mode === 'asset' ? result : null}
+              plan={mode === 'plan' ? portfolio : null} tipos={draft.tipos} />}
             <footer className="notice-bar">
               <Info size={15} aria-hidden="true" />
               <p>{t((usesPortfolio ? portfolio?.aviso : result?.aviso) ?? DEFAULT_NOTICE)}</p>

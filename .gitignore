@@ -1,9 +1,9 @@
-# Claves: nunca al repo
+# Keys: never in the repo
 .env
 *.env
 !.env.example
 
-# Datos descargados (se regeneran con data/fetch)
+# Downloaded data and reminders (regenerated with data/fetch)
 data/cache/
 *.parquet
 *.csv.gz
@@ -16,7 +16,7 @@ venv/
 .pytest_cache/
 .ipynb_checkpoints/
 
-# Sistema
+# System
 .DS_Store
 Thumbs.db
 .vscode/

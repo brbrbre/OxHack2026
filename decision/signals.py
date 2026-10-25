@@ -1,4 +1,4 @@
-"""Señales que salen directo de los precios, sin modelo."""
+"""Signals that come straight from prices, without a model."""
 
 from __future__ import annotations
 
@@ -8,10 +8,10 @@ import pandas as pd
 
 
 def tendencia(precios: pd.Series, meses: int = 12) -> float | None:
-    """Rendimiento de los últimos `meses` (días de calendario, sirve igual para cripto).
+    """Return over the last `meses` months (calendar days, so it works for crypto too).
 
-    Es la señal de precio con más evidencia a 1-12 meses (Moskowitz, Ooi y
-    Pedersen 2012). La regla la usa como freno, no como predicción.
+    It is the price signal with the most evidence at 1-12 months (Moskowitz, Ooi
+    and Pedersen 2012). The rule uses it as a brake, not as a forecast.
     """
     precios = precios.dropna()
     if precios.empty:

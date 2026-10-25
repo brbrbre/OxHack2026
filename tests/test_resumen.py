@@ -1,4 +1,4 @@
-"""Resumen y audio: Gemini solo redacta y la plantilla cubre cualquier falla. No usan internet."""
+"""Summary and audio: Gemini only writes, and the template covers any failure. No internet needed."""
 
 import pytest
 
@@ -41,7 +41,7 @@ def test_descarta_gemini_si_cambia_el_monto_o_se_alarga(propuesto):
 
 def test_si_gemini_falla_usa_la_plantilla():
     def falla(h):
-        raise TimeoutError("sin red")
+        raise TimeoutError("no network")
     assert resumen.resumir_decision(_decision(0.5), falla)["fuente"] == "template"
 
 
@@ -111,5 +111,5 @@ def test_con_gemini_usa_su_respuesta():
 
 def test_si_gemini_falla_no_rompe():
     def falla(p):
-        raise ConnectionError("sin red")
+        raise ConnectionError("no network")
     assert asesor.responder("What does it do?", "AAPL", "Apple", llamar=falla)["fuente"] == "local"

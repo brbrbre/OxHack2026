@@ -72,4 +72,15 @@ describe('first visit', () => {
     expect(input(html, 'horizon', '37')).toContain('min="1" max="60" step="1"')
     expect(input(html, 'risk', 'agresivo')).toContain('checked=""')
   })
+
+  it('opens a portfolio reminder directly in Help me choose with the supplied custom duration', async () => {
+    const html = await renderReminderLink('?view=planner&modo=plan&tipos=ETFs%2CCrypto&monto=750&plazo=37&perfil=conservador&recordatorio=abcDEF_123-xyz')
+    expect(html).not.toContain('id="entry-heading"')
+    expect(html).toContain('id="investment-form"')
+    expect(input(html, 'amount')).toContain('value="750"')
+    expect(input(html, 'horizon', '37')).toContain('type="range"')
+    expect(input(html, 'risk', 'conservador')).toContain('checked=""')
+    expect(input(html, 'planner-mode', 'plan')).toContain('checked=""')
+    expect(html).toContain('Build my plan')
+  })
 })

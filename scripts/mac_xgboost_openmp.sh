@@ -1,10 +1,10 @@
 #!/bin/sh
-# XGBoost en Mac sin Homebrew: "Library not loaded: @rpath/libomp.dylib".
-# Copia la libomp que trae scikit-learn junto a XGBoost dentro del entorno
-# virtual, agrega @loader_path como ruta de búsqueda y vuelve a firmar.
-# No toca nada fuera de .venv. Con Homebrew basta con: brew install libomp
+# XGBoost on a Mac without Homebrew: "Library not loaded: @rpath/libomp.dylib".
+# Copies the libomp that ships with scikit-learn next to XGBoost inside the
+# virtual environment, adds @loader_path as a search path and re-signs it.
+# Touches nothing outside .venv. With Homebrew, this is enough: brew install libomp
 #
-# Uso, desde la raíz del repo: sh scripts/mac_xgboost_openmp.sh
+# Usage, from the repo root: sh scripts/mac_xgboost_openmp.sh
 set -e
 PY=.venv/bin/python
 $PY -m pip install -q xgboost scikit-learn

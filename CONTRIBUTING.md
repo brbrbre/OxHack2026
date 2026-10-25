@@ -1,51 +1,40 @@
-# Cómo trabajamos (guía del equipo)
+# How we worked
 
-## Quién toca qué
+## Who built what
 
-### Núcleo (asignado)
-
-| Carpeta | Dueño | Para qué |
+| Folder | Owner | What it does |
 |---|---|---|
-| `data/` | Rocco | Bajar precios y guardarlos en caché |
-| `model/` | Felipe y Brisma | El modelo de predicción hecho a mano y su validación |
-| `decision/` | Rocco | Convertir la predicción en INVERTIR / ESPERAR / NO POR AHORA |
-| `api/` | Rocco | Servidor FastAPI que conecta la app con el código de Python |
-| `app/` | Carlos | La app en React (Vite): lo que ve el usuario y el jurado |
-| `notebooks/` | Felipe y Brisma | Exploración y gráficas; nada de lo que corre la app vive aquí |
-| `tests/` | Cada quien, los suyos | Pruebas rápidas con pytest |
-| `docs/` | Rocco y Brisma | Pitch, texto de Devpost, capturas |
+| `data/` | Rocco | Download prices and cache them |
+| `model/` | Brisma (Trend + TDA), Felipe (XGBoost) | Prediction models and their validation |
+| `decision/` | Rocco | Turn the forecast into Invest / Wait / Not now, backtest and calibration |
+| `api/` | Rocco | FastAPI server between the app and the Python code |
+| `app/` | Carlos | The React app: landing page, planner, languages, currencies, charts |
+| `explain/` | Rocco | Gemini summary and tutor, ElevenLabs voice |
+| `habito/` | Rocco | "Make it a habit": WhatsApp reminder and call through Twilio |
+| `tiger/` | Rocco | Prices and graded predictions in Tiger Data |
+| `deploy/` | Rocco | The live demo on Vultr |
+| `notebooks/` | Felipe and Brisma | Exploration; nothing the app runs lives here |
+| `tests/` | Everyone, their own | Fast tests with pytest and Vitest |
+| `docs/` | Rocco and Brisma | Pitch, sources and Devpost text |
 
-Cada quien edita solo sus carpetas. Si necesitas cambiar algo de otra, avisa en el grupo.
-
-### Extras para premios (sin asignar)
-
-Se deciden en las revisiones, según cuánto tiempo sobre. Primero el núcleo.
-
-| Extra | Carpeta | Candidatos |
-|---|---|---|
-| Tiger Data: guardar precios y predicciones | `data/` | Felipe y/o Rocco |
-| Gemini: redactar la explicación | `explain/` | Rocco |
-| ElevenLabs: botón "Escuchar" | `explain/` | Rocco |
-| Vultr: URL pública | `deploy/` | Rocco |
-| Delta (Zed) | - | Nadie por ahora |
-
-## Ramas
-
-- `main` siempre corre. Nadie sube código roto a `main`.
-- Cada quien trabaja en su rama: `Felipe_Branck`, `Model_Bris`, `carlos/app`, `rocco/...` (una por bloque).
-- Para juntar: Pull Request a `main`. Otra persona le da un vistazo de 2 minutos y lo aprueba.
-- Haz `git pull` antes de empezar y commits chicos y seguido.
-
-## Cómo se conecta todo
+## How it fits together
 
 ```
 app/ (React)  --HTTP-->  api/ (FastAPI)  -->  model/ + decision/ + data/
+                                         -->  explain/ (Gemini, ElevenLabs)
+                                         -->  habito/ (Twilio)  -->  WhatsApp, phone call
+                                         -->  tiger/ (Tiger Data)
 ```
 
-La app solo habla con `api/`. El contrato de las 3 rutas está en `api/README.md`.
-Mientras el API no esté, la app usa respuestas de ejemplo con la misma forma.
+The app only talks to `api/`. The contract is in `api/README.md`.
 
-## Arranque (una vez)
+## Branches
+
+- `main` always runs. Nobody pushes broken code to `main`.
+- Each person works on their own branch (`carlos/...`, `rocco/...`, and the model branches) and merges through a pull request.
+- `git pull` before starting; small commits, often.
+
+## Setup
 
 ```bash
 git clone https://github.com/brbrbre/OxHack2026.git
@@ -53,30 +42,22 @@ cd OxHack2026
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env             # pon tus claves aquí
+cp .env.example .env             # put your keys here
+uvicorn api.main:app --reload --port 8000
 ```
 
-Para la app (solo Carlos) hace falta Node.js 20 o más:
+The app needs Node.js 20 or newer:
 
 ```bash
 cd app
-npm install
-npm run dev                      # abre http://localhost:5173
+npm ci
+npm run dev                      # http://localhost:5173
 ```
 
-Para el API: `uvicorn api.main:app --reload --port 8000`
+## Rules
 
-## Reglas
-
-- El repo es **público**. Ninguna clave en el código: todas van en `.env`, que no se sube.
-- Los datos bajados van en `data/cache/`, que no se sube.
-- El modelo se valida en orden de tiempo: se entrena con el pasado y se prueba con el futuro.
-- Toda métrica del README sale de un comando que cualquiera puede correr.
-- Gemini solo explica. Quien decide es nuestro modelo.
-
-## Revisiones
-
-- **19:00 sáb:** SPY de punta a punta (datos, modelo, decisión en pantalla). Si la app de React no lo muestra todavía, plan B: Streamlit sobre el mismo API.
-- **00:00 dom:** métricas reales contra el baseline. Se decide qué extras entran y quién los hace.
-- **09:00 dom:** se congela el código; solo arreglos.
-- **11:30 dom:** envío en Devpost con el link de este repo.
+- The repo is **public**. No keys, phone numbers or e-mail addresses in the code: they go in `.env`, which is never committed.
+- Downloaded data and the reminder database go in `data/cache/`, which is never committed.
+- Models are validated in time order: train on the past, test on the future.
+- Every metric in the README comes from a command anyone can run.
+- Gemini and ElevenLabs only explain and speak. The model and the rule decide.

@@ -1,26 +1,27 @@
-# api/ - puente entre la app y el código de Python (Rocco)
+# api/ - the bridge between the web app and the Python code
 
-FastAPI. La app de React no llama Python directo: le pide los datos a este servidor. Son 4 rutas.
-Este contrato no cambia sin avisar a Carlos.
+FastAPI. The React app never calls Python directly; it asks this server for data.
+The contract below is what the app relies on. Field names and codes stay in Spanish (`simbolo`, `monto`, `INVERTIR`); every text a person reads arrives in English.
 
-Correr en local: `uvicorn api.main:app --reload --port 8000`
+Run locally: `uvicorn api.main:app --reload --port 8000`
 
-## Qué modelo usa
+Tests: `python -m pytest -q tests` (no internet needed).
 
-- Si existe `model/predict.py` con una función `predict(precios, plazo_dias)`, usa esa. Su nombre sale de la variable `NOMBRE` del mismo archivo.
-- Si la función acepta además `es_cripto=`, el API se lo pasa (`True` para BTCUSDT, ETHUSDT, SOLUSDT).
-- Si no existe, usa `api/baseline.py`: promedio y volatilidad de los últimos 3 años. Es también la referencia contra la que se compara el modelo.
-- La respuesta de `/api/decide` dice cuál usó en `"modelo"`.
+## Which model it uses
 
-Si existe `app/dist` (la app de React compilada con `npm run build`), el API también la sirve en `/`. Así se publica un solo programa.
+- `model/predict.py` picks the model. By default it is Trend + TDA (`model/predict_tda.py`, name `tendencia-tda`). `MODELO=xgboost` switches to XGBoost (`model/predict_xgboost.py`).
+- If the model's function accepts `es_cripto=`, the API passes it (`True` for BTCUSDT, ETHUSDT and SOLUSDT).
+- If no model loads, the API falls back to `api/baseline.py`: mean and volatility of the last 3 years. The baseline is also the yardstick the models are compared against.
+- `TDA_PARAMS` points to the Trend + TDA parameters. The app uses `model/params_tda.json` (all history); the honest test uses `model/params_tda_hasta_2021.json`.
+- Every answer says which model it used in `"modelo"`. The app shows it as "Trend + TDA" or "XGBoost".
 
-Pruebas: `python -m pytest -q tests` (no usan internet).
+If `app/dist` exists (the React app built with `npm run build`), the API also serves it at `/`, so the demo is one program.
 
-## Rutas
+## Routes
 
 ### `GET /api/assets`
 
-Catálogo de activos, agrupado por tipo.
+The asset catalogue, grouped by type.
 
 ```json
 {
@@ -36,7 +37,7 @@ Catálogo de activos, agrupado por tipo.
 
 ### `GET /api/prices/{simbolo}?dias=365`
 
-Cierres diarios para la gráfica. `dias` es opcional (por defecto 365).
+Daily closes for the chart. `dias` is optional (365 by default).
 
 ```json
 {
@@ -48,13 +49,13 @@ Cierres diarios para la gráfica. `dias` es opcional (por defecto 365).
 
 ### `POST /api/decide`
 
-Pide la decisión. `perfil` es `conservador`, `moderado` o `agresivo`. `plazo_dias` es cuánto tiempo piensa dejar invertido el dinero.
+Asks for the decision on one asset. `perfil` is `conservador`, `moderado` or `agresivo`. `plazo_dias` is how long the person plans to stay invested.
 
 ```json
 {"simbolo": "SPY", "monto": 1000, "plazo_dias": 30, "perfil": "moderado"}
 ```
 
-Respuesta:
+Response:
 
 ```json
 {
@@ -74,93 +75,94 @@ Respuesta:
     "fraccion": 1.0, "monto_sugerido": 1000.0, "tendencia_12m": 0.14,
     "eventos": []
   },
-  "modelo": "baseline",
+  "modelo": "tendencia-tda",
   "aviso": "Educational prototype, not financial advice. Data: Yahoo Finance, Binance."
 }
 ```
 
-- `decision` es siempre `INVERTIR`, `ESPERAR` o `NO_POR_AHORA`.
-- `fraccion` (0 a 1) y `monto_sugerido` dicen cuánto conviene invertir hoy. Es el dato principal: la app lo debe mostrar grande.
-- `tendencia_12m` es el rendimiento de los últimos 12 meses (puede ser `null` si no hay historia).
-- `eventos` trae textos como `"Fed rate decision (2026-10-28)"` cuando hay uno cerca.
-- Los textos (razones, recomendaciones, eventos, aviso, nombres y grupos de activos) llegan en inglés. Los códigos de `decision` y `perfil` siguen en español: la app los traduce a sus etiquetas.
-- `modelo` dice qué predijo: `baseline` (promedio histórico, mientras el modelo de Felipe y Brisma no esté) o el nombre de su modelo.
-- Errores: código 400 o 404 con `{"error": "texto"}`.
+- `decision` is always `INVERTIR` (Invest), `ESPERAR` (Wait) or `NO_POR_AHORA` (Not now).
+- `fraccion` (0 to 1) and `monto_sugerido` say how much to invest today. This is the main figure; the app shows it large.
+- `tendencia_12m` is the return of the last 12 months (`null` if there is not enough history).
+- `eventos` holds texts like `"Fed rate decision (2026-10-28)"` when one is near.
+- Errors: 400 or 404 with `{"error": "text"}`.
 
 ### `POST /api/plan`
 
-Para quien no sabe en qué invertir. Recibe monto, plazo, perfil y los tipos de activo que le interesan (los nombres de grupo de `/api/assets`, uno o más).
+For people who don't know what to buy ("Help me choose"). It takes the amount, horizon, profile and the asset types they like (group names from `/api/assets`, one or more).
 
 ```json
 {"monto": 5000, "plazo_dias": 90, "perfil": "moderado", "tipos": ["ETFs", "US stocks", "Crypto"]}
 ```
 
-Respuesta (ejemplo real, baseline, 24 oct 2026, recortado):
+Response (trimmed):
 
 ```json
 {
   "cartera": [
     {"simbolo": "VOO", "nombre": "S&P 500 (Vanguard)", "grupo": "ETFs", "peso": 0.28, "monto": 1400.0},
-    {"simbolo": "QQQ", "nombre": "Nasdaq 100", "grupo": "ETFs", "peso": 0.20, "monto": 1000.0},
-    {"simbolo": "GLD", "nombre": "Gold", "grupo": "ETFs", "peso": 0.19, "monto": 950.0}
+    {"simbolo": "QQQ", "nombre": "Nasdaq 100", "grupo": "ETFs", "peso": 0.20, "monto": 1000.0}
   ],
   "efectivo": 0.0,
-  "invertir": [{"simbolo": "SPY", "nombre": "S&P 500 (SPDR)", "grupo": "ETFs", "razon": "...", "fraccion": 1.0, "fuera_del_plan": null}],
+  "invertir": [{"simbolo": "SPY", "nombre": "S&P 500 (SPDR)", "grupo": "ETFs", "razon": "...", "fraccion": 1.0, "fuera_del_plan": "Moves almost like S&P 500 (Vanguard), which is already in the plan."}],
   "esperar": [{"simbolo": "BTCUSDT", "nombre": "Bitcoin", "grupo": "Crypto", "razon": "In a bad scenario the full amount could lose $1,097 (-21.9%); your moderate profile accepts up to 10%.", "fraccion": 0.46}],
-  "no_por_ahora": [{"simbolo": "ETHUSDT", "nombre": "Ethereum", "grupo": "Crypto", "razon": "The model sees a higher chance of losing than gaining over this period.", "fraccion": 0.0}],
-  "resumen": "For 90 days with a moderate profile: $1,400 in S&P 500 (Vanguard), ... Keep $0 in cash. In a bad scenario the plan could lose about $321 (-6.4%); your profile accepts up to 10%.",
+  "no_por_ahora": [],
+  "resumen": "For 90 days with a moderate profile: $1,400 in S&P 500 (Vanguard), ... Keep $0 in cash.",
   "numeros": {"monto": 5000, "plazo_dias": 90, "perfil": "moderado", "invertido": 5000.0,
               "rendimiento_esperado": 0.057, "volatilidad": 0.08, "peor_caso": -321.0, "tolerancia": 0.1},
-  "modelo": "baseline",
+  "modelo": "tendencia-tda",
   "aviso": "Educational prototype, not financial advice. Data: Yahoo Finance, Binance."
 }
 ```
 
-- `cartera` va ordenada de mayor a menor peso: hasta 5 activos, máximo 40 % en uno, sin dos activos que se muevan casi igual (como SPY y VOO).
-- `efectivo` es lo que no conviene invertir hoy. `invertido + efectivo = monto`.
-- `invertir`, `esperar` y `no_por_ahora` traen todos los activos de los tipos elegidos, cada uno con su razón.
-- Cada activo de `invertir` trae `fuera_del_plan`: `null` si está en la cartera, o el motivo si no entró (se mueve casi igual que otro ya elegido, o la cartera ya tiene 5).
-- Tipo desconocido: 400 con `{"error": "Unknown asset types: ..."}`.
+- `cartera` is sorted by weight: up to 5 assets, at most 40% in one, and never two assets that move almost the same (like SPY and VOO).
+- `efectivo` is what Horizon would not invest today. `invertido + efectivo = monto`.
+- `invertir`, `esperar` and `no_por_ahora` list every asset of the chosen types, each with its reason.
+- Each asset in `invertir` carries `fuera_del_plan`: `null` if it is in the plan, or why it was left out (it moves like one already chosen, or the plan already has 5).
+- Unknown type: 400 with `{"error": "Unknown asset types: ..."}`.
 
-### Resumen, tutor y audio (Gemini y ElevenLabs)
+### Summary, tutor and audio (Gemini and ElevenLabs)
 
-Solo redactan, explican o leen. Nunca deciden ni cambian un número. Las claves van en `.env` (`GEMINI_API_KEY`, `ELEVENLABS_API_KEY`); sin ellas todo sigue funcionando con textos locales.
+They only write, explain or read aloud. They never decide or change a number. Keys go in `.env` (`GEMINI_API_KEY`, `ELEVENLABS_API_KEY`); without them everything still works with local texts.
 
-- `POST /api/summary/decide` (mismo cuerpo que `/api/decide`) y `POST /api/summary/plan` (mismo cuerpo que `/api/plan`) devuelven `{"texto": "...", "fuente": "gemini" | "template"}`. Si Gemini falla, tarda más de 8 s o su texto no trae el monto que calculó la regla, se usa la plantilla.
-- `POST /api/ask` con `{"pregunta": "...", "simbolo": "WALMEX.MX", "contexto": {...}, "historial": [{"pregunta": "...", "respuesta": "..."}]}` devuelve `{"respuesta": "...", "fuente": "gemini" | "local" | "offline"}`. `simbolo`, `contexto` e `historial` son opcionales (máximo 4 turnos, pregunta de hasta 300 caracteres). Sin Gemini contesta con la ficha del activo (`explain/fichas.py`) o con el glosario.
-- `POST /api/listen` con `{"texto": "..."}` devuelve `audio/mpeg`. Solo lee resúmenes que generó este servidor (400 si no); 503 si no hay audio, y la app usa la voz del navegador.
+- `POST /api/summary/decide` (same body as `/api/decide`) and `POST /api/summary/plan` (same body as `/api/plan`) return `{"texto": "...", "fuente": "gemini" | "template"}`. If Gemini fails, takes longer than 8 s, or its text lacks the amount the rule computed, the template is used.
+- `POST /api/ask` with `{"pregunta": "...", "simbolo": "WALMEX.MX", "contexto": {...}, "historial": [{"pregunta": "...", "respuesta": "..."}]}` returns `{"respuesta": "...", "fuente": "gemini" | "local" | "offline"}`. `simbolo`, `contexto` and `historial` are optional (at most 4 turns, questions up to 300 characters). Without Gemini it answers from the asset fact sheet (`explain/fichas.py`) or the glossary.
+- `POST /api/listen` with `{"texto": "..."}` returns `audio/mpeg`. It only reads summaries this server wrote (400 otherwise); 503 if there is no audio, and the app falls back to the browser's voice.
 
-Modelo de Gemini: `GEMINI_MODEL` (por defecto `gemini-flash-lite-latest`). Voz: `ELEVENLABS_VOICE_ID` y `ELEVENLABS_MODEL`.
+Gemini model: `GEMINI_MODEL` (default `gemini-flash-lite-latest`). Voice: `ELEVENLABS_VOICE_ID` and `ELEVENLABS_MODEL`.
 
-### Hábito: recordatorio por WhatsApp y llamada (`habito/`)
+### Make it a habit: WhatsApp reminder and call (`habito/`)
 
-La persona pide que le recordemos su plan. Al terminar el plazo, el servidor vuelve a calcular la respuesta de ese día; Gemini redacta el WhatsApp con esos números y un link personal. Si nadie abre el link en `HABITO_ESPERA_MIN` minutos, Twilio llama y reproduce un guion con la voz de ElevenLabs.
+The person asks Horizon to remind them about one asset or a whole "Help me choose" plan. When the horizon ends, the server computes that day's answer again, and Gemini drafts a WhatsApp with those numbers and a personal link. If nobody opens the link within `HABITO_ESPERA_MIN` minutes, Twilio calls and plays a script in an ElevenLabs voice. It is one or the other: an opened link cancels the call, and opening the link during a call hangs it up.
 
-- `POST /api/habit/remind` con `{"telefono": "+1...", "consentimiento": true, "simbolo", "monto", "plazo_dias", "perfil"}` guarda el recordatorio (vence en `plazo_dias`). 400 sin permiso o con formato malo; 403 si el número no está en `HABITO_PERMITIDOS` (la URL es pública: así nadie la usa para mandar spam).
-- `GET /api/habit/{token}` da el estado: `pendiente`, `enviado`, `abierto`, `llamado` o `error`.
-- `POST /api/habit/{token}/now` (solo con `HABITO_DEMO=1`) vence el recordatorio ya y lo manda.
-- `GET /r/{token}` es el link del WhatsApp: marca `abierto` y abre la app con el mismo plan.
-- `GET /api/habit/audio/{token}.mp3` es el audio que reproduce la llamada.
+- `POST /api/habit/remind` saves the reminder; it is due after `plazo_dias`. Body: `{"telefono": "+1...", "consentimiento": true, "monto", "plazo_dias", "perfil"}` plus either `"simbolo"` (one asset) or `"tipos"` (a plan). 400 without consent, with a bad format, or with neither; 403 if the number is not in `HABITO_PERMITIDOS` (the URL is public, so nobody can use it to send spam).
+- `GET /api/habit/{token}` gives the status, checked live against Twilio:
+  - `estado`: `pendiente`, `enviado`, `abierto`, `llamando`, `llamado` (Twilio says the call was `completed`), `sin_respuesta` (busy, no answer, failed or canceled) or `error`.
+  - `mensaje_estado`: what Twilio reports for the WhatsApp (`queued`, `sent`, `delivered`, `read`, `undelivered`, `failed`).
+  - `llamada_estado`: what Twilio reports for the call (`queued`, `ringing`, `in-progress`, `completed`, `busy`, `no-answer`...).
+- `POST /api/habit/{token}/now` (only with `HABITO_DEMO=1`) makes the reminder due now and sends it, so a demo does not wait 30 days.
+- `GET /r/{token}` is the WhatsApp link. It only redirects to the app with the same plan, adding `recordatorio={token}`. It does not mark anything, because WhatsApp's link-preview robot also visits it.
+- `POST /api/habit/{token}/open` is what marks the reminder opened. The app calls it when it loads from the link; the preview robot does not run JavaScript.
+- `GET /api/habit/audio/{token}.mp3` is the audio the call plays.
 
-Variables: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` (número para llamar), `TWILIO_WHATSAPP_FROM` (número del sandbox), `PUBLIC_URL`, `HABITO_PERMITIDOS` (por defecto `DEMO_PHONE`), `HABITO_LLAMADA_A` (parejas `whatsapp=voz` para llamar a otro número que el del WhatsApp; a los celulares de México se les quita el 1 para marcar), `HABITO_ESPERA_MIN` (por defecto 1440), `HABITO_DEMO`, `HABITO_AUTO=1` (revisa recordatorios cada 20 s dentro del API). Los recordatorios viven en `data/cache/habito.sqlite`, fuera del repo, porque llevan teléfonos.
+Variables: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` (the Twilio number that calls), `TWILIO_WHATSAPP_FROM` (the sandbox number), `PUBLIC_URL`, `HABITO_PERMITIDOS` (defaults to `DEMO_PHONE`), `HABITO_LLAMADA_A` (`whatsapp=voice` pairs, to call a different number than the WhatsApp one; Mexican mobiles lose the 1 for dialling), `HABITO_ESPERA_MIN` (default 1440), `HABITO_DEMO`, `HABITO_CANAL=sms` (send SMS instead of WhatsApp), `HABITO_AUTO=1` (checks reminders every 20 s inside the API). Reminders live in `data/cache/habito.sqlite`, outside the repo, because they hold phone numbers.
 
-Límites de la demo: el sandbox de WhatsApp de Twilio solo escribe a números que se unieron con "join ..."; la cuenta de prueba solo llama a números verificados y empieza con un aviso de "trial account". En uso real, un mensaje que abre la conversación necesita una plantilla aprobada por Meta.
+Demo limits: Twilio's WhatsApp sandbox only writes to numbers that joined it with "join ...". In real use, a message that opens a conversation needs a template approved by Meta.
 
 ### `POST /api/plan/selected`
 
-Ruta independiente para repartir el presupuesto **solo entre activos elegidos por la persona**. No cambia `/api/plan`: el plan automático por tipos conserva su tope de 40 % por activo.
+An independent route that allocates the budget **only among the assets the person selected**. It does not change `/api/plan`: the automatic plan by asset type keeps its 40% cap per asset.
 
 ```json
 {"simbolos": ["VOO", "GLD"], "monto": 1000, "plazo_dias": 30, "perfil": "moderado"}
 ```
 
-- `simbolos` es una lista no vacía, sin repetidos, del catálogo de `/api/assets`. No se manda `tipos`: el servidor encuentra los grupos de esos símbolos. Valida la lista completa antes de cargar precios o ejecutar el modelo; símbolo desconocido: 404, selección vacía/repetida: 400 con `{"error": "texto"}`.
-- `monto` sigue en USD y debe ser mayor que 0 y como máximo 1,000,000,000. `plazo_dias` acepta cualquier entero de 1 a 730 días de calendario. `perfil` conserva los mismos tres códigos y por defecto es `moderado`.
-- Devuelve exactamente la forma de respuesta de `/api/plan`: `cartera`, `efectivo`, las tres listas de decisiones, `resumen`, `numeros`, `modelo` y `aviso`. Las listas contienen solo los símbolos pedidos; no se añaden otros activos.
-- Reutiliza el mismo modelo y motor: solo entran los activos con decisión `INVERTIR`, se omiten los que casi copian a otro elegido, se mantienen hasta 5 posiciones y se ajusta el riesgo total al perfil. Los pesos dependen de la volatilidad, no de un reparto igual ni de Gemini.
-- **Política de concentración distinta y explícita:** en esta ruta el tope por activo es 100 % del presupuesto. Puede resultar un reparto 60/40, una sola posición o todo en efectivo; ninguna distribución está garantizada. El control de riesgo puede dejar parte del presupuesto sin invertir. `peso` es siempre una fracción del presupuesto completo y `invertido + efectivo = monto`.
-- El tope de 100 % no anula los frenos individuales del modelo/regla. Ningún peso final supera la `fraccion` calculada para ese activo por riesgo, tendencia o eventos. Si hace falta reducir una posición, se escala toda la cartera conservando sus proporciones y el resto queda en efectivo, sin redistribuirlo. Por ejemplo, una única posición elegible con `fraccion = 0.5` puede recibir como máximo 50 % del presupuesto, aunque el límite de concentración permita 100 %. Esta protección es propia de la ruta de selección; `/api/plan` conserva su comportamiento anterior.
+- `simbolos` is a nonempty list of unique symbols from `/api/assets`. Do not send `tipos`: the server finds the groups for those symbols. The entire list is validated before prices are loaded or the model runs. Unknown symbol: 404; empty or duplicate selection: 400, with `{"error": "text"}`.
+- `monto` stays in USD and must be greater than 0 and no more than 1,000,000,000. `plazo_dias` accepts any integer from 1 to 730 calendar days. `perfil` keeps the same three codes and defaults to `moderado`.
+- The response has exactly the shape of `/api/plan`: `cartera`, `efectivo`, the three decision lists, `resumen`, `numeros`, `modelo` and `aviso`. The lists contain only the requested symbols; no other assets are added.
+- It reuses the same model and engine: only assets with decision `INVERTIR` can enter, near duplicates are skipped, at most 5 positions are held, and total risk is adjusted to the profile. Weights depend on volatility, not an equal split or Gemini.
+- **A separate, explicit concentration policy:** this route permits up to 100% of the budget in one asset. A 60/40 split, a single position or an all-cash plan are possible; no allocation is guaranteed. Risk controls can leave part of the budget uninvested. `peso` always refers to the full budget, and `invertido + efectivo = monto`.
+- The 100% cap does not override individual sizing brakes. No final weight exceeds the asset's `fraccion` from risk, trend or event rules. If a position must shrink, the whole portfolio is scaled while preserving proportions; the difference stays in cash without redistribution. For example, one eligible asset with `fraccion = 0.5` can receive at most 50% of the budget even though the concentration cap permits 100%. This protection belongs to the selected-asset route; `/api/plan` preserves its previous behavior.
 
 ### `POST /api/summary/plan/selected`
 
-Recibe el mismo cuerpo que `/api/plan/selected`, calcula el plan con ese mismo universo y llama a `resumen.resumir_plan`. Devuelve `{"texto": "...", "fuente": "gemini" | "template"}`. Gemini solo explica los números ya calculados. El texto se registra para que el botón Listen use la ruta existente `/api/listen`; no hay otro flujo de audio ni recordatorios automáticos.
+Takes the same body as `/api/plan/selected`, calculates the plan for that exact universe, and calls `resumen.resumir_plan`. Returns `{"texto": "...", "fuente": "gemini" | "template"}`. Gemini only explains numbers already calculated. The text is registered so Listen can use the existing `/api/listen` route; this adds no separate audio flow or automatic reminders.

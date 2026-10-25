@@ -1,9 +1,8 @@
-"""Catálogo de activos para el selector de la app.
-Nombres y grupos en inglés porque los ve el jurado.
+"""Asset catalogue for the app's picker. Names and groups are in English.
 
-Cada símbolo se comprobó con data.fetch el 24 oct 2026 (todos devolvieron
-historial hasta el 23-24 oct). HSBA.L y SHEL.L se agregaron ese mismo día. Para agregar uno: probarlo con
-`python -m data.fetch SIMBOLO` y luego añadirlo aquí.
+Every symbol was checked with data.fetch on 24 October 2026 (all returned
+history up to 23-24 October). To add one: test it with
+`python -m data.fetch SYMBOL`, then add it here.
 """
 
 ASSETS = {
@@ -24,7 +23,7 @@ ASSETS = {
         "FEMSAUBD.MX": "FEMSA",
     },
     "UK stocks": {
-        # Precios de Londres en peniques (GBp): 1,352 = £13.52.
+        # London prices are in pence (GBp): 1,352 = £13.52.
         "VOD.L": "Vodafone",
         "HSBA.L": "HSBC",
         "SHEL.L": "Shell",

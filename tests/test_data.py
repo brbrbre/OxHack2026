@@ -1,4 +1,4 @@
-"""Pruebas del bloque de datos. No usan internet."""
+"""Tests for the data block. No internet needed."""
 
 import pandas as pd
 
@@ -13,7 +13,7 @@ def test_routing_crypto_vs_yahoo():
 
 
 def test_binance_parse_uses_milliseconds():
-    # 2026-10-23 00:00 UTC en milisegundos, como lo da la API REST.
+    # 2026-10-23 00:00 UTC in milliseconds, as the REST API gives it.
     rows = [[1792713600000, "100", "110", "90", "105", "12.5", 0, "0", 1, "0", "0", "0"]]
     df = fetch.parse_binance_klines(rows)
     assert df.index[0] == pd.Timestamp("2026-10-23")

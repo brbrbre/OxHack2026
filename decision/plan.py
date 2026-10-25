@@ -1,19 +1,19 @@
-"""Plan de inversión para quien no sabe en qué invertir.
+""""Help me choose": an investment plan for people who don't know what to buy.
 
-La persona da: monto, perfil de riesgo, plazo y tipos de activo que le
-interesan. El plan:
-1. Corre la regla de decisión en cada activo de esos tipos y los divide en
-   invertir / esperar / no por ahora, cada uno con su razón.
-2. Arma una cartera con hasta MAX_ACTIVOS de los que se pueden invertir:
-   uno por tipo en turno (para diversificar) y, dentro de cada tipo, primero
-   el de mayor señal del modelo. Salta los que casi copian a uno ya elegido.
-3. Reparte con más peso a lo que se mueve menos (peso ∝ 1 / volatilidad),
-   sin pasar de TOPE_POR_ACTIVO en uno solo.
-4. Escala la parte invertida para que el peor escenario de la cartera completa
-   (percentil 5, con las correlaciones de los últimos 3 años) no pase la
-   tolerancia del perfil. El resto queda en efectivo, y el plan lo dice.
+The person gives an amount, a risk profile, a horizon and the asset types they
+like. The plan:
+1. Runs the decision rule on every asset of those types and splits them into
+   invest / wait / not now, each with its reason.
+2. Builds a portfolio of up to MAX_ACTIVOS investable assets: one per type in
+   turn (to diversify) and, within each type, the strongest model signal first.
+   It skips any asset that nearly copies one already chosen.
+3. Gives more weight to what moves less (weight ∝ 1 / volatility), never more
+   than TOPE_POR_ACTIVO in one asset.
+4. Scales the invested part so the whole portfolio's bad case (5th percentile,
+   with the last 3 years of correlations) stays within the profile's tolerance.
+   The rest stays in cash, and the plan says so.
 
-No usa ningún LLM: Gemini, si entra, solo redacta el resumen.
+No LLM is involved: Gemini only writes the summary.
 """
 
 from __future__ import annotations
@@ -29,25 +29,25 @@ from decision.signals import tendencia
 
 MAX_ACTIVOS = 5
 TOPE_POR_ACTIVO = 0.40
-# Si un candidato se mueve casi igual que uno ya elegido (ej. SPY y VOO, los dos
-# replican el S&P 500), no diversifica: se salta.
+# If a candidate moves almost like one already chosen (e.g. SPY and VOO, both
+# track the S&P 500), it adds no diversification and is skipped.
 CORRELACION_MAXIMA = 0.95
-VENTANA_COV = 756   # ~3 años de sesiones
+VENTANA_COV = 756   # about 3 years of sessions
 Z_95 = 1.6449
 
 
 def _razon_principal(r: dict) -> str:
-    """La razón que explica la decisión (las dos primeras son siempre los números)."""
+    """The reason that explains the decision (the first two are always the numbers)."""
     extra = r["razones"][2:]
     return extra[-1] if extra else r["razones"][0]
 
 
 def _pesos(seleccion: list[dict], *, tope_por_activo: float = TOPE_POR_ACTIVO) -> list[float]:
-    """Peso ∝ 1/volatilidad, con tope por activo.
+    """Weight ∝ 1/volatility, with a cap per asset.
 
-    Reparto por llenado: los que llegan al tope se quedan fijos ahí y el
-    exceso se reparte solo entre los demás. Si hay menos de 3 activos, el
-    tope no deja llegar a 100 % y el resto queda en efectivo.
+    Water-filling: assets that hit the cap stay there, and the excess is shared
+    among the others only. With the default cap, fewer than 3 assets can't
+    reach 100%, and the rest stays in cash.
     """
     if not math.isfinite(tope_por_activo) or not 0 < tope_por_activo <= 1:
         raise ValueError("The asset weight limit must be greater than 0 and no more than 1.")
@@ -78,9 +78,9 @@ def _correlacion(a: pd.Series, b: pd.Series) -> float:
 
 def riesgo_cartera(pesos: list[float], simbolos: list[str], precios: dict[str, pd.Series],
                    mus: list[float], plazo_dias: int) -> tuple[float, float, float]:
-    """Rendimiento esperado, volatilidad y peor caso (percentil 5) de la cartera en el plazo."""
+    """Expected return, volatility and bad case (5th percentile) of the portfolio over the horizon."""
     rets = pd.concat({s: np.log(precios[s].astype(float)).diff() for s in simbolos}, axis=1)
-    rets = rets.dropna().tail(VENTANA_COV)  # días en que todos cotizan
+    rets = rets.dropna().tail(VENTANA_COV)  # days when every asset trades
     h = plazo_dias * 252 / 365
     cov = rets.cov().to_numpy() * h
     w = np.array(pesos)
@@ -93,12 +93,11 @@ def plan(monto: float, plazo_dias: int, perfil: str, grupos: dict[str, list[str]
          precios: dict[str, pd.Series], nombres: dict[str, str], predecir,
          hoy: date | None = None, *, tope_por_activo: float = TOPE_POR_ACTIVO,
          respetar_fracciones: bool = False) -> dict:
-    """grupos: {"ETFs": ["SPY", ...], ...} solo con los tipos que eligió la persona.
-    predecir(simbolo, precios) -> dict con el contrato de model.predict().
-    El plan por tipos conserva el tope de 40 %. La ruta independiente de activos
-    elegidos pasa un tope de 100 % y respeta las fracciones individuales,
-    sin cambiar elegibilidad ni riesgo. Los valores por defecto conservan el
-    comportamiento del plan automático."""
+    """grupos: {"ETFs": ["SPY", ...], ...} with only the types the person chose.
+    predecir(simbolo, precios) -> dict with the model.predict() contract.
+    Defaults preserve the automatic plan's 40% cap and existing behavior. The
+    separate selected-asset route requests a 100% cap and honors individual
+    sizing fractions without changing eligibility, correlation or risk rules."""
     hoy = hoy or date.today()
     tol = PEOR_CASO_ACEPTABLE[perfil]
     filas = []
@@ -114,11 +113,11 @@ def plan(monto: float, plazo_dias: int, perfil: str, grupos: dict[str, list[str]
                 "volatilidad": n["volatilidad"], "rendimiento_esperado": n["rendimiento_esperado"],
             })
 
-    # Selección: uno por tipo en turno; dentro del tipo, mayor señal primero.
+    # Selection: one per type in turn; within a type, strongest signal first.
     candidatos = {g: sorted([f for f in filas if f["grupo"] == g and f["decision"] == INVERTIR],
                             key=lambda f: -f["senal"]) for g in grupos}
     seleccion: list[dict] = []
-    # Por qué un activo que se puede invertir no entró a la cartera (la app lo muestra).
+    # Why an investable asset didn't make the portfolio (the app shows it as "Not in the plan").
     fuera: dict[str, str] = {}
 
     def copia(f: dict) -> dict | None:
@@ -147,9 +146,9 @@ def plan(monto: float, plazo_dias: int, perfil: str, grupos: dict[str, list[str]
         w, mu, sigma, peor, escala = [], 0.0, 0.0, 0.0, 0.0
 
     if respetar_fracciones and seleccion:
-        # Levantar el tope de concentración no debe anular los frenos de riesgo,
-        # tendencia o eventos. Escalamos toda la cartera sin alterar proporciones
-        # ni volver a repartir la diferencia: esta queda en efectivo.
+        # Raising the concentration cap must not override risk, trend or event
+        # sizing brakes. Scale the whole portfolio without changing proportions
+        # or redistributing the difference: that part stays in cash.
         limites = [f["fraccion"] / wi for f, wi in zip(seleccion, w) if wi > 0]
         escala = max(0.0, min(1.0, escala, *limites))
 

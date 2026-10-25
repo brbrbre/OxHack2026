@@ -1,4 +1,4 @@
-"""Pruebas del backtest con precios sintéticos. No usan internet."""
+"""Backtest tests with synthetic prices. No internet needed."""
 
 import numpy as np
 import pandas as pd

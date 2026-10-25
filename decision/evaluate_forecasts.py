@@ -1,19 +1,19 @@
-"""¿Las predicciones dicen la verdad? Evalúa el pronóstico, no la decisión.
+"""Do the forecasts tell the truth? Evaluates the forecast, not the decision.
 
-Sirve para cualquier predictor (el baseline hoy, el modelo del equipo después).
-Usa las mismas ventanas que el backtest: el modelo solo ve el pasado.
+Works for any predictor (the baseline, Trend + TDA, XGBoost).
+Uses the same windows as the backtest: the model only sees the past.
 
-Qué mide:
-- Cobertura del intervalo del 90 %: el precio real debería caer dentro 90 % de
-  las veces, y abajo del extremo bajo solo 5 %. De ese extremo depende cuánto
-  invierte la app.
-- Brier de prob_perdida: error cuadrático de la probabilidad de pérdida contra
-  lo que pasó (0 = perfecto). Se compara con un pronóstico ingenuo: la
-  frecuencia histórica de pérdidas hasta ese día. Skill > 0 = mejor que el ingenuo.
-- Tabla de calibración: cuando el modelo dice 40 %, ¿se pierde 40 % de las veces?
-- IC de rango (Spearman) entre rendimiento esperado y real: ¿ordena bien?
+What it measures:
+- Coverage of the 90% interval: the real return should fall inside 90% of the
+  time, and below the low end only 5%. How much the app invests depends on
+  that low end.
+- Brier score of prob_perdida: squared error of the chance of loss against
+  what happened (0 = perfect). Compared with a naive forecast: the historical
+  loss frequency up to that day. Skill > 0 = better than naive.
+- Calibration table: when the model says 40%, is there a loss 40% of the time?
+- Rank correlation (Spearman) between expected and real return: does it order well?
 
-Uso:
+Usage:
     python -m decision.evaluate_forecasts --desde 2022-01-01
     python -m decision.evaluate_forecasts --desde 2022-01-01 --modelo model
 """
@@ -38,9 +38,9 @@ def ventanas(simbolos, precios, es_cripto, predict, plazo, desde, hasta=None) ->
         if df.empty:
             continue
         df["simbolo"] = s
-        # Pronóstico ingenuo: frecuencia de pérdida de las ventanas de este plazo hasta la fecha.
+        # Naive forecast: loss frequency of windows of this horizon up to the date.
         p = precios[s]
-        # Mismo plazo en sesiones: cripto cotiza 365 días al año, lo demás ~252.
+        # Same horizon in sessions: crypto trades 365 days a year, the rest about 252.
         k = plazo if es_cripto[s] else round(plazo * 252 / 365)
         r_hist = (p / p.shift(k) - 1).dropna()
         ingenuo = []
@@ -80,7 +80,7 @@ def main(argv: list[str]) -> int:
     from data.assets import all_symbols
     from data.fetch import get_close, is_crypto
 
-    ap = argparse.ArgumentParser(description="Evaluación de los pronósticos")
+    ap = argparse.ArgumentParser(description="Forecast evaluation")
     ap.add_argument("--desde", default="2022-01-01")
     ap.add_argument("--hasta", default=None)
     ap.add_argument("--plazo", type=int, default=30)
@@ -94,20 +94,20 @@ def main(argv: list[str]) -> int:
     df = ventanas(simbolos, precios, cripto, predict, a.plazo, a.desde, a.hasta)
 
     m = metricas(df)
-    print(f"Modelo: {nombre} | plazo {a.plazo} días | desde {a.desde} | {m['ventanas']} ventanas en {len(simbolos)} activos\n")
-    print("1) INTERVALO DEL 90 %  (meta: 90 % dentro, 5 % abajo, 5 % arriba)")
-    print(f"   dentro {m['cobertura_90']:.0%} | abajo del extremo bajo {m['abajo_del_bajo']:.0%} | arriba del alto {m['arriba_del_alto']:.0%}\n")
-    print("2) PROBABILIDAD DE PÉRDIDA")
-    print(f"   Brier modelo {m['brier']:.3f} | Brier ingenuo (frecuencia histórica) {m['brier_ingenuo']:.3f} | "
-          f"skill {m['skill']:+.1%}  (>0 = mejor que el ingenuo)")
-    print(f"   Frecuencia real de pérdida en estas ventanas: {m['frec_perdida']:.0%}\n")
-    print("   Calibración: cuando el modelo dice X, ¿se perdió X de las veces?")
+    print(f"Model: {nombre} | horizon {a.plazo} days | from {a.desde} | {m['ventanas']} windows across {len(simbolos)} assets\n")
+    print("1) 90% INTERVAL  (target: 90% inside, 5% below, 5% above)")
+    print(f"   inside {m['cobertura_90']:.0%} | below the low end {m['abajo_del_bajo']:.0%} | above the high end {m['arriba_del_alto']:.0%}\n")
+    print("2) CHANCE OF LOSS")
+    print(f"   Brier model {m['brier']:.3f} | Brier naive (historical frequency) {m['brier_ingenuo']:.3f} | "
+          f"skill {m['skill']:+.1%}  (>0 = better than naive)")
+    print(f"   Real loss frequency in these windows: {m['frec_perdida']:.0%}\n")
+    print("   Calibration: when the model says X, was there a loss X of the time?")
     cal = calibracion(df)
     for rango, r in cal.iterrows():
-        print(f"   {str(rango):<14} {int(r['ventanas']):>4} ventanas | dice {r['dice']:.0%} | pasó {r['pasó']:.0%}")
-    print(f"\n3) ORDEN: IC de rango esperado vs real = {m['ic_rango']:+.3f}  (0 = no ordena, 1 = perfecto)\n")
+        print(f"   {str(rango):<14} {int(r['ventanas']):>4} windows | says {r['dice']:.0%} | happened {r['pasó']:.0%}")
+    print(f"\n3) ORDER: rank correlation, expected vs real = {m['ic_rango']:+.3f}  (0 = no order, 1 = perfect)\n")
 
-    print("4) POR ACTIVO (dentro del intervalo | abajo del bajo | skill Brier | IC)")
+    print("4) PER ASSET (inside the interval | below the low end | Brier skill | rank corr.)")
     for s, g in df.groupby("simbolo", sort=False):
         mm = metricas(g)
         print(f"   {s:<12} {mm['cobertura_90']:>4.0%} | {mm['abajo_del_bajo']:>4.0%} | {mm['skill']:>+7.1%} | {mm['ic_rango']:+.2f}")

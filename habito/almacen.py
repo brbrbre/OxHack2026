@@ -1,4 +1,4 @@
-"""Recordatorios guardados en SQLite, dentro de data/cache/ (fuera del repo: llevan teléfonos)."""
+"""Reminders stored in SQLite, inside data/cache/ (outside the repo: they hold phone numbers)."""
 
 from __future__ import annotations
 
@@ -30,11 +30,12 @@ CREATE TABLE IF NOT EXISTS recordatorios (
 )
 """
 
-# Columnas que llegaron después; conectar() las agrega a una base ya creada.
-# Guardan el SID de Twilio y el último estado que Twilio reportó (delivered, busy, completed...).
-NUEVAS = ("mensaje_sid", "mensaje_estado", "llamada_sid", "llamada_estado")
+# Columns added later; conectar() adds them to an existing database.
+# They hold the Twilio SIDs and the last status Twilio reported (delivered, busy, completed...),
+# and the asset types when the reminder is for a "Help me choose" plan (comma-separated).
+NUEVAS = ("mensaje_sid", "mensaje_estado", "llamada_sid", "llamada_estado", "tipos")
 
-# Estados de Twilio que ya no cambian: no hace falta volver a preguntar.
+# Twilio statuses that no longer change: no need to ask again.
 FINALES_MENSAJE = ("delivered", "read", "failed", "undelivered")
 FINALES_LLAMADA = ("completed", "busy", "no-answer", "failed", "canceled")
 
@@ -62,14 +63,14 @@ def conectar(archivo: Path | None = None) -> sqlite3.Connection:
 
 
 def crear(conn, telefono: str, simbolo: str, nombre: str, monto: float, plazo_dias: int, perfil: str,
-          decision: str, sugerido: float, cuando: datetime | None = None) -> dict:
+          decision: str, sugerido: float, cuando: datetime | None = None, tipos: list[str] | None = None) -> dict:
     cuando = cuando or ahora()
     nuevo = secrets.token_urlsafe(16)
     conn.execute(
         "INSERT INTO recordatorios (token, creado, vence, telefono, simbolo, nombre, monto, plazo_dias, perfil, "
-        "decision, sugerido) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "decision, sugerido, tipos) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (nuevo, _iso(cuando), _iso(cuando + timedelta(days=plazo_dias)), telefono, simbolo, nombre, monto,
-         plazo_dias, perfil, decision, sugerido))
+         plazo_dias, perfil, decision, sugerido, ",".join(tipos) if tipos else None))
     conn.commit()
     return obtener(conn, nuevo)
 
@@ -91,14 +92,14 @@ def vencidos(conn, cuando: datetime) -> list[dict]:
 
 
 def sin_abrir(conn, cuando: datetime, espera: timedelta) -> list[dict]:
-    """Enviados hace más de `espera` cuyo link nadie abrió: toca llamar."""
+    """Sent more than `espera` ago and nobody opened the link: time to call."""
     return [dict(f) for f in conn.execute(
         "SELECT * FROM recordatorios WHERE estado = 'enviado' AND abierto_en IS NULL AND enviado_en <= ?",
         (_iso(cuando - espera),))]
 
 
 def por_revisar(conn) -> list[dict]:
-    """Mensajes o llamadas cuyo estado en Twilio todavía puede cambiar."""
+    """Messages or calls whose Twilio status can still change."""
     m = ",".join("?" * len(FINALES_MENSAJE))
     ll = ",".join("?" * len(FINALES_LLAMADA))
     return [dict(f) for f in conn.execute(

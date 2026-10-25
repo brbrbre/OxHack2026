@@ -123,10 +123,12 @@ export interface AskResponse {
   fuente: 'gemini' | 'local' | 'offline'
 }
 
+/** One asset (simbolo) or a "Help me choose" plan (tipos). */
 export interface RemindRequest {
   telefono: string
   consentimiento: boolean
-  simbolo: string
+  simbolo?: string
+  tipos?: string[]
   monto: number
   plazo_dias: number
   perfil: RiskProfile

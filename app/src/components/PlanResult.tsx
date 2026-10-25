@@ -3,7 +3,7 @@ import type { PlanResponse } from '../api/types'
 import { useCurrency } from '../currency/CurrencyContext'
 import type { CurrencyCode } from '../currency/currency'
 import { useI18n } from '../i18n/I18nContext'
-import { DECISION_LABELS } from '../lib/labels'
+import { DECISION_LABELS, modelLabel } from '../lib/labels'
 import { assetIdentity } from '../lib/assetIdentity'
 import type { AssetInspection } from '../lib/assetInspection'
 import { inspectPlanAsset } from '../lib/assetInspection'
@@ -84,7 +84,7 @@ export default function PlanResult({ result, pending, error, onRetry, onInspect 
         <>
           <div className="panel-heading">
             <span className="model-badge">{result.modelo === 'baseline'
-              ? t('Prediction: baseline (3-year historical average)') : t('Prediction: {model}', { model: result.modelo })}</span>
+              ? t('Prediction: baseline (3-year historical average)') : t('Prediction: {model}', { model: modelLabel(result.modelo) })}</span>
           </div>
           <div className="decision-heading">
             <h2 className="suggested-amount" id="outlook-heading" tabIndex={-1}>

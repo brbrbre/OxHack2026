@@ -1,9 +1,9 @@
-"""Resumen en lenguaje simple de una decisión o de un plan.
+""""In short": a plain-language summary of a decision or a plan.
 
-Gemini solo redacta: recibe la salida ya calculada de decide() o plan() y la
-pasa a dos o tres oraciones. Nunca decide ni cambia un número. Se usa la
-plantilla local si no hay GEMINI_API_KEY, si la llamada falla o tarda, o si el
-texto no trae el monto que calculó la regla.
+Gemini only writes: it gets the already computed output of decide() or plan() and
+turns it into two or three sentences. It never decides or changes a number. The
+local template is used if there is no GEMINI_API_KEY, if the call fails or is
+slow, or if the text lacks the amount the rule computed.
 """
 
 from __future__ import annotations
@@ -11,12 +11,12 @@ from __future__ import annotations
 import json
 import os
 
-# flash-lite contesta en ~1 s; gemini-flash-latest estaba saturado (503) o tardaba más de 29 s (24 oct 2026).
+# flash-lite answers in about 1 s; gemini-flash-latest was overloaded (503) or took over 29 s (24 Oct 2026).
 MODELO = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
-TIMEOUT_MS = 12000  # la API de Gemini rechaza plazos menores a 10 s
+TIMEOUT_MS = 12000  # the Gemini API rejects timeouts under 10 s
 LARGO_MAXIMO = 500
 
-# Textos que salieron de aquí: /api/listen solo lee estos, no texto libre.
+# Texts written here: /api/listen only reads these, never free text.
 generados: set[str] = set()
 _guardados: dict[str, dict] = {}
 
@@ -110,9 +110,9 @@ def _resumir(hechos: dict, plantilla: str, llamar) -> dict:
     texto, fuente = plantilla, "template"
     try:
         propuesto = llamar(hechos)
-    except Exception:  # sin red, cuota, modelo no disponible: la plantilla basta
+    except Exception:  # no network, quota, model unavailable: the template is enough
         propuesto = None
-    # Si Gemini cambió o se saltó el monto, no se usa: el número lo pone la regla.
+    # If Gemini changed or skipped the amount, its text is dropped: the rule sets the number.
     if propuesto and hechos["invest_now"] in propuesto and len(propuesto) <= LARGO_MAXIMO:
         texto, fuente = propuesto, "gemini"
     r = {"texto": texto, "fuente": fuente}
