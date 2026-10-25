@@ -53,15 +53,46 @@ def audio_url(rec: dict) -> str:
     return f"{base_url()}/api/habit/audio/{rec['token']}.mp3"
 
 
+SIN_RESPUESTA = ("busy", "no-answer", "failed", "canceled")
+
+
+def revisar(conn, rec: dict, cuando: datetime, consultar=None) -> dict:
+    """Pregunta a Twilio qué pasó de verdad con el mensaje y la llamada, y lo guarda.
+
+    Que Twilio acepte la llamada no quiere decir que alguien contestó: "llamado" solo queda con
+    "completed"; busy, no-answer, failed o canceled pasan a "sin_respuesta".
+    """
+    consultar = consultar or twilio
+    cambios = {}
+    if rec.get("mensaje_sid") and rec.get("mensaje_estado") not in almacen.FINALES_MENSAJE:
+        cambios["mensaje_estado"] = consultar.estado_mensaje(rec["mensaje_sid"])
+    if rec.get("llamada_sid") and rec.get("llamada_estado") not in almacen.FINALES_LLAMADA:
+        estado = consultar.estado_llamada(rec["llamada_sid"])
+        cambios["llamada_estado"] = estado
+        if rec["estado"] == "llamando" and estado == "completed":
+            cambios |= {"estado": "llamado", "llamado_en": almacen.iso(cuando)}
+        elif rec["estado"] == "llamando" and estado in SIN_RESPUESTA:
+            cambios["estado"] = "sin_respuesta"
+    if cambios:
+        almacen.actualizar(conn, rec["token"], **cambios)
+    return rec | cambios
+
+
 def procesar(conn, cuando: datetime, decidir, enviar=None, voz=None) -> dict:
     """Una vuelta del ciclo. `decidir(rec)` devuelve la respuesta de /api/decide de hoy para ese recordatorio."""
     enviar = enviar or twilio
     hechos = {"enviados": 0, "llamadas": 0, "errores": 0}
+    for rec in almacen.por_revisar(conn):
+        try:
+            revisar(conn, rec, cuando, enviar)
+        except Exception:  # si Twilio no responde, se vuelve a preguntar en la siguiente vuelta
+            pass
     for rec in almacen.vencidos(conn, cuando):
         try:
             texto, _ = mensajes.whatsapp(rec, decidir(rec), link(rec))
-            enviar.mensaje(rec["telefono"], texto)
-            almacen.actualizar(conn, rec["token"], estado="enviado", enviado_en=almacen.iso(cuando))
+            sid = enviar.mensaje(rec["telefono"], texto)
+            almacen.actualizar(conn, rec["token"], estado="enviado", enviado_en=almacen.iso(cuando),
+                               mensaje_sid=sid, mensaje_estado="queued" if sid else None)
             hechos["enviados"] += 1
         except Exception as e:  # se guarda el motivo para verlo en /api/habit/{token}
             almacen.actualizar(conn, rec["token"], estado="error", error=str(e)[:300])
@@ -70,8 +101,9 @@ def procesar(conn, cuando: datetime, decidir, enviar=None, voz=None) -> dict:
         guion = mensajes.guion_llamada(rec)
         try:
             hay_audio = voz is not None and voz.audio(guion) is not None
-            enviar.llamar(telefono_llamada(rec["telefono"]), audio_url(rec) if hay_audio else None, guion)
-            almacen.actualizar(conn, rec["token"], estado="llamado", llamado_en=almacen.iso(cuando))
+            sid = enviar.llamar(telefono_llamada(rec["telefono"]), audio_url(rec) if hay_audio else None, guion)
+            almacen.actualizar(conn, rec["token"], estado="llamando", llamada_sid=sid,
+                               llamada_estado="queued" if sid else None)
             hechos["llamadas"] += 1
         except Exception as e:
             almacen.actualizar(conn, rec["token"], estado="error", error=str(e)[:300])

@@ -24,6 +24,26 @@ def _post(recurso: str, datos: dict) -> dict:
     return r.json()
 
 
+def _get(recurso: str) -> dict:
+    if not configurado():
+        raise RuntimeError("Twilio is not set up yet")
+    sid, clave = os.environ["TWILIO_ACCOUNT_SID"], os.environ["TWILIO_AUTH_TOKEN"]
+    r = requests.get(API.format(sid=sid, recurso=recurso), auth=(sid, clave), timeout=20)
+    if r.status_code >= 300:
+        raise RuntimeError(f"Twilio {recurso} {r.status_code}: {r.text[:300]}")
+    return r.json()
+
+
+def estado_mensaje(sid: str) -> str:
+    """queued, sent, delivered, read, undelivered o failed."""
+    return _get(f"Messages/{sid}")["status"]
+
+
+def estado_llamada(sid: str) -> str:
+    """queued, ringing, in-progress, completed, busy, no-answer, failed o canceled."""
+    return _get(f"Calls/{sid}")["status"]
+
+
 def whatsapp(telefono: str, texto: str) -> str:
     """Manda un WhatsApp desde el número del sandbox. Devuelve el SID del mensaje."""
     return _post("Messages", {"From": "whatsapp:" + os.environ["TWILIO_WHATSAPP_FROM"],

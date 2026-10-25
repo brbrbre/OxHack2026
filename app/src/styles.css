@@ -651,4 +651,6 @@ h3 { font-size: 16px; font-weight: 600; line-height: 1.5; }
 .remind-steps { display: grid; gap: 8px; margin-top: 10px; padding: 0; list-style: none; }
 .remind-steps li { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 15px; }
 .remind-steps li.done { color: var(--ink); font-weight: 600; }
+.remind-steps li.missed { color: var(--ink); }
+.remind-steps li.missed svg { color: var(--error-ink); }
 .step-dot { width: 10px; height: 10px; margin: 0 3px; border: 2px solid var(--ink-2); border-radius: 50%; }

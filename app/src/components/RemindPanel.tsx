@@ -1,20 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { BellRing, Check, LoaderCircle } from 'lucide-react'
+import { BellRing, Check, LoaderCircle, X } from 'lucide-react'
 import { api } from '../api/client'
 import { errorMessage } from '../api/errors'
 import type { DecideResponse, HabitStatus } from '../api/types'
 import { dateLabel } from '../lib/format'
+import { habitSettled, habitSteps } from '../lib/habitSteps'
 
 interface Props {
   result: DecideResponse | null
 }
-
-const STEPS: { key: string, label: string, done: (s: HabitStatus) => boolean }[] = [
-  { key: 'saved', label: 'Reminder saved', done: () => true },
-  { key: 'sent', label: 'WhatsApp sent', done: (s) => Boolean(s.enviado_en) },
-  { key: 'next', label: 'Opened, or we call you', done: (s) => Boolean(s.abierto_en || s.llamado_en) },
-]
 
 export default function RemindPanel({ result }: Props) {
   const [phone, setPhone] = useState('')
@@ -66,7 +61,7 @@ export default function RemindPanel({ result }: Props) {
         try {
           const next = await api.habitStatus(status.token)
           setStatus(next)
-          if (next.abierto_en || next.llamado_en || next.estado === 'error' || Date.now() - started > 10 * 60_000) {
+          if (habitSettled(next) || Date.now() - started > 10 * 60_000) {
             if (poll.current) window.clearInterval(poll.current)
           }
         } catch { /* keep the last known state */ }
@@ -104,14 +99,11 @@ export default function RemindPanel({ result }: Props) {
         <div className="remind-status" aria-live="polite">
           <p>Reminder set for <strong>{dateLabel((planned ?? status.vence).slice(0, 10), true)}</strong>.</p>
           <ol className="remind-steps">
-            {STEPS.map((step) => {
-              const done = step.done(status)
-              return <li key={step.key} className={done ? 'done' : ''}>
-                {done ? <Check size={16} aria-hidden="true" /> : <span className="step-dot" aria-hidden="true" />}
-                {step.key === 'next' && status.llamado_en ? 'Not opened yet, so we called you' :
-                  step.key === 'next' && status.abierto_en ? 'You opened the reminder' : step.label}
-              </li>
-            })}
+            {habitSteps(status).map((step) => <li key={step.key} className={step.state === 'waiting' ? '' : step.state}>
+              {step.state === 'done' ? <Check size={16} aria-hidden="true" />
+                : step.state === 'missed' ? <X size={16} aria-hidden="true" /> : <span className="step-dot" aria-hidden="true" />}
+              {step.label}
+            </li>)}
           </ol>
           {status.estado === 'error' && <p className="field-error" role="alert">We could not send it: {status.error}</p>}
           {status.demo && !status.enviado_en && (

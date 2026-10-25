@@ -136,7 +136,7 @@ export function parseAsk(value: unknown): AskResponse {
 }
 
 export function parseHabit(value: unknown): HabitStatus {
-  const states = ['pendiente', 'enviado', 'abierto', 'llamado', 'error']
+  const states = ['pendiente', 'enviado', 'abierto', 'llamando', 'llamado', 'sin_respuesta', 'error']
   if (!record(value) || typeof value.token !== 'string' || typeof value.vence !== 'string' ||
       !states.includes(String(value.estado)) || typeof value.demo !== 'boolean') return invalid('reminder')
   return value as unknown as HabitStatus
