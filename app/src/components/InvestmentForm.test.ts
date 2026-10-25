@@ -32,15 +32,39 @@ describe('investment planner modes', () => {
     expect(html).toContain('type="submit" disabled=""')
   })
 
-  it('keeps the single-asset form and its grouped catalogue', () => {
+  it('keeps the legacy single asset selected while allowing more assets to be added', () => {
     const html = renderToStaticMarkup(createElement(InvestmentForm, { ...props, mode: 'asset' }))
-    expect(html).toContain('I have an asset in mind')
+    expect(html).toContain('I have assets in mind')
     expect(html).toContain('Help me choose')
     expect(html).toContain('id="asset"')
     expect(html).toContain('role="combobox"')
-    expect(html).toContain('value="S&amp;P 500 (SPDR) (SPY)"')
-    expect(html).toContain('name="asset" value="SPY"')
+    expect(html).toContain('S&amp;P 500 (SPDR)</strong><small>SPY</small>')
+    expect(html).toContain('name="selected-assets" value="SPY"')
+    expect(html).toContain('aria-label="Remove S&amp;P 500 (SPDR) (SPY)"')
+    expect(html).toContain('Search again to add another asset.')
     expect(html).not.toContain('id="asset-types"')
+  })
+
+  it('explains an equal budget split before submitting multiple selected assets', () => {
+    const html = renderToStaticMarkup(createElement(InvestmentForm, {
+      ...props, mode: 'asset', draft: { ...props.draft, simbolos: ['SPY', 'GLD'] },
+    }))
+    expect(html).toContain('name="selected-assets" value="SPY"')
+    expect(html).toContain('name="selected-assets" value="GLD"')
+    expect(html).toContain('About $2,500 per asset')
+    expect(html).toContain('Your $5,000 budget is split equally across 2 assets for comparison, not an optimized allocation.')
+    expect(html.indexOf('About $2,500 per asset')).toBeLessThan(html.indexOf('type="submit"'))
+    expect(html).not.toContain('type="submit" disabled=""')
+  })
+
+  it('waits for an asset when the user removes every selection without blocking Help me choose', () => {
+    const draft = { ...props.draft, simbolos: [], simbolo: '' }
+    const manual = renderToStaticMarkup(createElement(InvestmentForm, { ...props, draft, mode: 'asset' }))
+    expect(manual).toContain('Choose at least one asset.')
+    expect(manual).toContain('role="combobox"')
+    expect(manual).toContain('type="submit" disabled=""')
+    const automatic = renderToStaticMarkup(createElement(InvestmentForm, { ...props, draft, mode: 'plan' }))
+    expect(automatic).not.toContain('type="submit" disabled=""')
   })
 
   it('uses exact API group keys as checkboxes in the plan form', () => {

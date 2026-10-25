@@ -1,0 +1,14 @@
+.selected-assets-picker { min-width: 0; }
+.selected-assets-list { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 0 0 10px; list-style: none; }
+.selected-asset { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; min-height: 48px; padding: 6px 6px 6px 10px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); }
+.selected-asset-copy { min-width: 0; flex: 1; }
+.selected-asset-copy strong { display: block; font-size: 14px; font-weight: 500; line-height: 1.4; overflow-wrap: anywhere; }
+.selected-asset-copy small { display: block; color: var(--ink-2); font-size: 12px; line-height: 1.5; }
+.selected-asset-remove { display: grid; place-items: center; flex: 0 0 40px; min-height: 40px; border: 0; border-radius: 4px; background: transparent; color: var(--ink-2); }
+.selected-asset-remove:hover { background: var(--paper); color: var(--ink); }
+.selected-asset-remove:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.selected-assets-help { margin-top: 7px; }
+.selected-assets-split { display: grid; gap: 4px; margin-top: 12px; padding: 12px; border-left: 2px solid var(--accent); background: var(--accent-soft); font-size: 13px; line-height: 1.6; }
+.selected-assets-split strong { color: var(--ink); font-weight: 600; }
+.selected-assets-split span { color: var(--ink-2); }
+.selected-assets-picker > .asset-picker-control > input { padding-inline: 12px; font-size: 14px; font-weight: 400; }

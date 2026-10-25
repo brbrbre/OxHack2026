@@ -1,0 +1,50 @@
+:root { --on-accent: #fff; --notice-space: 66px; }
+body { padding-bottom: calc(var(--notice-space) + 12px); }
+.appearance-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.language-control { display: flex; align-items: center; gap: 5px; min-width: 0; color: var(--ink-2); }
+.language-control select { width: 142px; min-height: 44px; height: 44px; padding: 0 20px 0 6px; border: 0; background: transparent; color: var(--ink); font-size: 13px; cursor: pointer; appearance: auto; }
+select option, select optgroup { background-color: var(--surface); color: var(--ink); }
+.theme-control { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--ink); }
+.theme-control:hover { border-color: var(--ink-2); }
+.site-header .appearance-controls { margin-left: auto; }
+.site-header { gap: 24px; }
+.site-header nav { gap: 20px; }
+.site-header .event-tag { margin-left: 0; }
+.information-notice { position: fixed; z-index: 120; right: 0; bottom: 0; left: 0; padding: 10px 24px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--surface); color: var(--ink-2); }
+.information-notice > div { display: flex; align-items: center; justify-content: center; gap: 10px; max-width: 1240px; margin: 0 auto; }
+.information-notice svg { flex-shrink: 0; color: var(--accent); }
+.information-notice p { font-size: 12px; line-height: 1.6; }
+.model-language-note { margin-top: 14px; padding-bottom: 4px; color: var(--ink-2); font-size: 12px; line-height: 1.6; }
+.how-content > div { position: relative; }
+.how-step-arrow { display: block; margin-top: 18px; color: var(--accent); }
+html[lang='zh-CN'] h1, html[lang='zh-CN'] h2, html[lang='zh-CN'] h3 { letter-spacing: 0; }
+.sunrise-intro { position: fixed; z-index: 110; inset: 0; display: grid; place-items: center; padding: 24px 24px calc(var(--notice-space) + 24px); background: var(--paper); color: var(--ink); animation: intro-depart 2.3s ease both; }
+.intro-composition { text-align: center; width: min(100%, 340px); }
+.intro-scene { display: block; width: 100%; height: auto; color: var(--ink-2); overflow: visible; }
+.intro-sun { transform-box: fill-box; transform-origin: center; animation: sun-appears 1.65s cubic-bezier(.22,.6,.3,1) both; }
+.intro-horizon { transform-origin: center; animation: horizon-draw 1s ease both; }
+.intro-reflection { opacity: .5; animation: wordmark-appears 1.5s ease both; }
+.intro-wordmark { margin-top: 12px; font-size: clamp(44px, 7vw, 64px); font-weight: 700; line-height: 1; letter-spacing: -2.4px; animation: wordmark-appears 1.5s ease both; }
+.intro-wordmark span { color: var(--accent); }
+.intro-line { margin-top: 18px; color: var(--ink-2); font-size: 14px; animation: wordmark-appears 1.8s ease both; }
+.intro-skip { position: absolute; top: 20px; right: 24px; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 0; border: 0; background: none; color: var(--ink-2); font-size: 13px; }
+@keyframes sun-appears { from { transform: translateY(52px); opacity: .25; } to { transform: translateY(0); opacity: 1; } }
+@keyframes horizon-draw { from { transform: scaleX(.35); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
+@keyframes wordmark-appears { 0%, 20% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
+@keyframes intro-depart { 0%, 84% { opacity: 1; } 100% { opacity: 0; } }
+@media (max-width: 1200px) { .site-header .event-tag { display: none; } }
+@media (max-width: 760px) {
+  .site-header { justify-content: space-between; gap: 8px; min-height: 72px; height: auto; padding-block: 12px; }
+  .site-header .event-tag { display: none; }
+  .appearance-controls { gap: 5px; }
+  .language-control { gap: 4px; }
+  .language-control select { width: 118px; padding-left: 2px; font-size: 12px; }
+  .theme-control { width: 44px; height: 44px; min-height: 44px; flex-basis: 44px; }
+  .information-notice { padding: 9px 16px calc(9px + env(safe-area-inset-bottom)); }
+  .information-notice > div { align-items: flex-start; gap: 8px; }
+  .information-notice svg { margin-top: 2px; }
+  .information-notice p { font-size: 12px; line-height: 1.6; }
+  .how-step-arrow { transform: rotate(90deg); }
+}
+@media (max-width: 360px) { .language-control select { width: 94px; } .language-control > svg { display: none; } }
+@media (prefers-reduced-motion: reduce) { .sunrise-intro, .sunrise-intro * { animation: none !important; } }

@@ -16,6 +16,17 @@ function render(result: DecideResponse | null, options: { pending?: boolean; err
   return html
 }
 
+function capitalSplit(html: string) {
+  const split = html.match(/<dl class="decision-money-split"[^>]*>([\s\S]*?)<\/dl>/)?.[1]
+  expect(split, 'Expected a labelled split of the original budget').toBeDefined()
+  function value(label: string) {
+    const amount = split!.match(new RegExp('<dt>' + label + '<\\/dt>\\s*<dd[^>]*>([\\s\\S]*?)<\\/dd>'))?.[1]
+    expect(amount, label).toBeDefined()
+    return amount!.replace(/<[^>]+>/g, '')
+  }
+  return { html: split!, suggested: value('Suggested investment now'), uninvested: value('Keep uninvested for now') }
+}
+
 describe('investment amount presentation', () => {
   it('keeps the API asset name and symbol together beside its decorative identity mark', () => {
     const result = { ...decisionFixtures.invest, nombre: 'API supplied asset name' }
@@ -40,12 +51,35 @@ describe('investment amount presentation', () => {
     result.numeros.fraccion = 0.555
     result.numeros.monto_sugerido = 555
     const html = render(result)
-    expect(html).toContain('>Invest $555 now</h2>')
-    expect(html).toContain('of your $1,000')
-    expect(html).toContain('keep $445 for later')
+    expect(html).toContain('>Suggested now: $555</h2>')
+    expect(html).toContain('How your $1,000 is split')
+    expect(capitalSplit(html)).toMatchObject({ suggested: '$555', uninvested: '$445' })
     expect(html).toContain('class="decision-badge wait">Wait</span>')
     expect(html).toContain('Estimated range on your full $1,000 over 30 days.')
+    const reasons = html.split('<div class="reasons">')[1].split('</div>')[0]
+    expect(reasons).toContain('The gain and loss estimates below use the full $1,000 over 30 days, not just the suggested $555.')
+    expect(html).toContain('<dt>Investment period</dt><dd>30 days</dd>')
     expect(html).toContain('-$220')
+  })
+
+  it('explains that the $209 suggested and $791 uninvested are the original capital, separate from gains and losses', () => {
+    const result = structuredClone(decisionFixtures.waitRisk)
+    result.numeros.fraccion = 0.209
+    result.numeros.monto_sugerido = 209
+    result.numeros.peor_caso = -100
+    result.numeros.mejor_caso = 200
+    const html = render(result)
+    const split = capitalSplit(html)
+    expect(html).toContain('>Suggested now: $209</h2>')
+    expect(split).toMatchObject({ suggested: '$209', uninvested: '$791' })
+    const numeric = (value: string) => Number(value.replace(/[$,]/g, ''))
+    expect(numeric(split.suggested) + numeric(split.uninvested)).toBe(result.numeros.monto)
+    expect(html).toContain('These amounts come from your budget. They are not profits.')
+    expect(split.html).not.toContain('-$100')
+    expect(split.html).not.toContain('+$200')
+    expect(html).toContain('-$100')
+    expect(html).toContain('+$200')
+    expect(html).toContain('The gain and loss estimates below use the full $1,000 over 30 days, not just the suggested $209.')
   })
 
   it('displays the supplied amount instead of deriving a new allocation', () => {
@@ -54,35 +88,64 @@ describe('investment amount presentation', () => {
     result.numeros.fraccion = 0.5
     result.numeros.monto_sugerido = 612.34
     const html = render(result)
-    expect(html).toContain('>Invest $612 now</h2>')
-    expect(html).toContain('keep $388 for later')
+    expect(html).toContain('>Suggested now: $612</h2>')
+    expect(capitalSplit(html)).toMatchObject({ suggested: '$612.34', uninvested: '$387.66' })
+    expect(html).toContain('not just the suggested $612.34.')
   })
 
-  it('rounds the headline to whole units without hiding a full or empty amount', () => {
-    const almostAll = structuredClone(decisionFixtures.waitRisk)
-    almostAll.numeros.fraccion = 0.9996
-    almostAll.numeros.monto_sugerido = 999.6
-    expect(render(almostAll)).toContain('>Invest the full $1,000 now</h2>')
-    expect(render(almostAll)).not.toContain('allocation-breakdown')
-
-    const cents = structuredClone(decisionFixtures.waitRisk)
-    cents.numeros.fraccion = 0.39338
-    cents.numeros.monto_sugerido = 393.38
-    expect(render(cents)).toContain('>Invest $393 now</h2>')
-    expect(render(cents)).toContain('keep $607 for later')
-
-    const tiny = structuredClone(decisionFixtures.waitRisk)
-    tiny.numeros.fraccion = 0.0004
-    tiny.numeros.monto_sugerido = 0.4
-    expect(render(tiny)).toContain('>Keep your $1,000 for now</h2>')
+  it.each([
+    { suggested: 999.6, headline: '$999.60', exact: '$999.60', uninvested: '$0.40' },
+    { suggested: 393.38, headline: '$393', exact: '$393.38', uninvested: '$606.62' },
+    { suggested: 0.4, headline: '$0.40', exact: '$0.40', uninvested: '$999.60' },
+  ])('keeps the $suggested capital exact and avoids rounding a partial investment to full or zero', ({ suggested, headline, exact, uninvested }) => {
+    const result = structuredClone(decisionFixtures.waitRisk)
+    result.numeros.fraccion = suggested / result.numeros.monto
+    result.numeros.monto_sugerido = suggested
+    const html = render(result)
+    expect(html).toContain('>Suggested now: ' + headline + '</h2>')
+    expect(capitalSplit(html)).toMatchObject({ suggested: exact, uninvested })
+    expect(html).toContain('These amounts come from your budget. They are not profits.')
+    expect(html).toContain('not just the suggested ' + exact + '.')
+    expect(html).not.toContain('>Keep your $1,000 for now</h2>')
   })
 
   it('keeps the full budget when no investment is suggested', () => {
     const html = render(decisionFixtures.notNow)
     expect(html).toContain('>Keep your $1,000 for now</h2>')
     expect(html).toContain('class="decision-badge not-now">Not now</span>')
-    expect(html).not.toContain('allocation-breakdown')
+    expect(capitalSplit(html)).toMatchObject({ suggested: '$0', uninvested: '$1,000' })
+    expect(html).toContain('These amounts come from your budget. They are not profits.')
+    expect(html).not.toContain('not just the suggested')
     expect(html).not.toContain('>Invest $0 now</h2>')
+  })
+
+  it('still shows both capital amounts when the full budget is suggested', () => {
+    const html = render(decisionFixtures.invest)
+    expect(capitalSplit(html)).toMatchObject({ suggested: '$1,000', uninvested: '$0' })
+    expect(html).toContain('How your $1,000 is split')
+    expect(html).toContain('These amounts come from your budget. They are not profits.')
+    expect(html).not.toContain('not just the suggested')
+  })
+
+  it('keeps an Invest decision distinct from Wait without rounding a nearly full allocation up to full', () => {
+    const result = structuredClone(decisionFixtures.invest)
+    result.numeros.monto_sugerido = 999.6
+    result.numeros.fraccion = 0.9996
+    const html = render(result)
+    expect(html).toContain('>Invest $999.60 now</h2>')
+    expect(html).toContain('class="decision-badge invest">Invest</span>')
+    expect(html).not.toContain('Invest the full')
+    expect(capitalSplit(html)).toMatchObject({ suggested: '$999.60', uninvested: '$0.40' })
+  })
+
+  it('keeps a whole-dollar headline for a split budget while showing its precise amount below', () => {
+    const result = structuredClone(decisionFixtures.invest)
+    result.numeros.monto = 333.34
+    result.numeros.monto_sugerido = 333.34
+    const html = render(result)
+    expect(html).toContain('>Invest the full $333 now</h2>')
+    expect(html).toContain('<dd>$333.34</dd>')
+    expect(capitalSplit(html)).toMatchObject({ suggested: '$333.34', uninvested: '$0' })
   })
 
   it('uses centralized English labels while leaving Spanish codes unchanged', () => {

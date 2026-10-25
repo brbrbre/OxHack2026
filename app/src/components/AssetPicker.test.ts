@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { assets } from '../mocks/assets'
+import { translate } from '../i18n/I18nContext'
 import AssetPicker, { filterAssetGroups, nextAssetIndex } from './AssetPicker'
 
 describe('asset search', () => {
@@ -39,6 +40,31 @@ describe('asset search', () => {
   it('uses new API catalogue entries without a hardcoded list', () => {
     const catalogue = { 'New group': [{ simbolo: 'NEW', nombre: 'New company' }] }
     expect(filterAssetGroups(catalogue, 'company')).toEqual([{ name: 'New group', assets: catalogue['New group'] }])
+  })
+
+  it('keeps legacy English search and matches translated Gold aliases without changing API names', () => {
+    expect(filterAssetGroups(assets, 'gold').flatMap((group) => group.assets)).toEqual([assets.ETFs[3]])
+    expect(filterAssetGroups(assets, 'oro')).toEqual([])
+    for (const [locale, query] of [['es-419', '  ORO GLD '], ['zh-CN', '黄金']] as const) {
+      const matches = filterAssetGroups(assets, query, (name) => translate(locale, name)).flatMap((group) => group.assets)
+      expect(matches).toEqual([{ simbolo: 'GLD', nombre: 'Gold' }])
+      expect(matches[0]).toBe(assets.ETFs[3])
+      expect(filterAssetGroups(assets, 'gold', (name) => translate(locale, name)).flatMap((group) => group.assets))
+        .toEqual(matches)
+    }
+  })
+
+  it.each([
+    { locale: 'zh-CN', query: '比特币', symbol: 'BTCUSDT' },
+    { locale: 'es-419', query: 'libra esterlina', symbol: 'GBPUSD=X' },
+    { locale: 'es-419', query: 'dolar peso mexicano', symbol: 'MXN=X' },
+    { locale: 'zh-CN', query: '墨西哥比索', symbol: 'MXN=X' },
+    { locale: 'fr', query: 'livre sterling', symbol: 'GBPUSD=X' },
+    { locale: 'it', query: 'sterlina britannica', symbol: 'GBPUSD=X' },
+  ] as const)('finds $query using $locale aliases and preserves the wire symbol', ({ locale, query, symbol }) => {
+    const matches = filterAssetGroups(assets, query, (name) => translate(locale, name)).flatMap((group) => group.assets)
+    expect(matches.map((asset) => asset.simbolo)).toEqual([symbol])
+    expect(matches[0]).toBe(Object.values(assets).flat().find((asset) => asset.simbolo === symbol))
   })
 })
 

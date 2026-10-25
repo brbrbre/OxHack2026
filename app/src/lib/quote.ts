@@ -29,10 +29,10 @@ export function quoteForSymbol(symbol: string): AssetQuote {
   return { currency: 'USD', divisor: 1, unit: 'USD', note: 'Prices in USD (US dollars).' }
 }
 
-function formatQuote(symbol: string, rawValue: number, compact: boolean): string {
+function formatQuote(symbol: string, rawValue: number, compact: boolean, locale = 'en-GB'): string {
   const quote = quoteForSymbol(symbol)
   const digits = quote.currency === 'FX' ? 4 : 2
-  const number = new Intl.NumberFormat('en-GB', {
+  const number = new Intl.NumberFormat(locale === 'en' ? 'en-GB' : locale, {
     notation: compact ? 'compact' : 'standard',
     minimumFractionDigits: compact ? 0 : digits,
     maximumFractionDigits: digits,
@@ -42,13 +42,15 @@ function formatQuote(symbol: string, rawValue: number, compact: boolean): string
   if (quote.currency === 'MXN') return 'MX$' + number
   if (quote.currency === 'USD') return '$' + number
   if (compact) return number
-  return quote.unit ? number + ' ' + quote.unit : number
+  const separators: Record<string, string> = { 'es-419': 'por', 'zh-CN': '/', fr: 'pour', it: 'per' }
+  const unit = quote.unit.replace(' per ', ' ' + (separators[locale] ?? 'per') + ' ')
+  return unit ? number + ' ' + unit : number
 }
 
-export function formatQuotePrice(symbol: string, rawValue: number): string {
-  return formatQuote(symbol, rawValue, false)
+export function formatQuotePrice(symbol: string, rawValue: number, locale = 'en-GB'): string {
+  return formatQuote(symbol, rawValue, false, locale)
 }
 
-export function formatQuoteTick(symbol: string, rawValue: number): string {
-  return formatQuote(symbol, rawValue, true)
+export function formatQuoteTick(symbol: string, rawValue: number, locale = 'en-GB'): string {
+  return formatQuote(symbol, rawValue, true, locale)
 }

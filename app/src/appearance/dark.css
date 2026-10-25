@@ -1,0 +1,11 @@
+html[data-theme='dark'] {
+  --paper: #10151C; --surface: #19212C; --ink: #F0F3F8; --ink-2: #BAC6D5; --line: #364354;
+  --accent: #A8BAFF; --accent-soft: #25334D; --accent-hover: #C2CFFF; --disabled-button: #59677D; --on-accent: #142034;
+  --error-ink: #FFB7CB; --error-surface: #35232E;
+  --decision-invest: #8FD6AC; --decision-wait: #F0C66D; --decision-not-now: #FFABA0;
+  --decision-invest-surface: #1B302A; --decision-wait-surface: #332E20; --decision-not-now-surface: #382624;
+  --forecast-boundary: #A2B6EE; --forecast-fill: #25334D; --gold-surface: #382F1C; --gold-ink: #F3D483;
+  --result-shadow: 0 4px 24px #0003; color-scheme: dark;
+}
+html[data-theme='dark'] .asset-logo:has(> img):not(.asset-color-gold) { background: transparent; }
+html[data-theme='dark'] select { color-scheme: dark; }
