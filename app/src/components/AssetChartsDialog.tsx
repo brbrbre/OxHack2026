@@ -7,6 +7,7 @@ import type { DecideResponse, PricesResponse } from '../api/types'
 import { DEFAULT_NOTICE, USE_MOCKS } from '../config'
 import { useCurrency } from '../currency/CurrencyContext'
 import { useI18n } from '../i18n/I18nContext'
+import { modelLabel } from '../lib/labels'
 import { matchingInspectionAnalysis } from '../lib/assetChartAnalysis'
 import type { AssetInspection } from '../lib/assetInspection'
 import { buildInvestmentProjection } from '../lib/valueForecast'
@@ -176,7 +177,7 @@ export default function AssetChartsDialog({ selection, onClose }: Props) {
                 basis={t(amountLabel) + ': ' + money(amount)} idPrefix={id + '-growth'} compact headingLevel={3} />
             </Suspense>}
           {currentAnalysis && !projectionError && <p className="asset-charts-model model-badge">{currentAnalysis.modelo === 'baseline'
-            ? t('Prediction: baseline (3-year historical average)') : t('Prediction: {model}', { model: currentAnalysis.modelo })}</p>}
+            ? t('Prediction: baseline (3-year historical average)') : t('Prediction: {model}', { model: modelLabel(currentAnalysis.modelo) })}</p>}
         </>}
       </div>
       <div role="tabpanel" id={id + '-history'} aria-labelledby={id + '-history-tab'} hidden={tab !== 'history'} tabIndex={0}>

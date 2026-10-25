@@ -28,16 +28,19 @@ def _dinero(x: float) -> str:
 
 def hechos(rec: dict, hoy: dict, link: str) -> dict:
     n = hoy["numeros"]
-    return {
+    datos = {
         "asset": rec["nombre"],
         "situation": ("their waiting period has ended" if rec["decision"] != "INVERTIR"
                       else f"their {rec['plazo_dias']}-day plan has ended"),
         "first_answer": f"{ETIQUETA[rec['decision']]}, invest {_dinero(rec['sugerido'])} of {_dinero(rec['monto'])}",
         "today_answer": f"{ETIQUETA[hoy['decision']]}, invest {_dinero(min(n['monto_sugerido'], n['monto']))} of {_dinero(n['monto'])}",
         "today_expected_return": f"{n['rendimiento_esperado']:+.1%} over {n['plazo_dias']} days",
-        "today_chance_of_loss": f"{n['prob_perdida']:.0%}",
+        "today_chance_of_loss": f"{n['prob_perdida']:.0%}" if n.get("prob_perdida") is not None else "not computed for a plan",
         "review_link": link,
     }
+    if hoy.get("activos"):  # recordatorio de un plan de "Help me choose"
+        datos["today_assets"] = hoy["activos"]
+    return datos
 
 
 def plantilla(h: dict) -> str:

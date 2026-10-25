@@ -3,16 +3,19 @@ import type { FormEvent } from 'react'
 import { BellRing, Check, ChevronDown, LoaderCircle, X } from 'lucide-react'
 import { api } from '../api/client'
 import { errorMessage } from '../api/errors'
-import type { DecideResponse, HabitStatus } from '../api/types'
+import type { DecideResponse, HabitStatus, PlanResponse } from '../api/types'
 import { useI18n } from '../i18n/I18nContext'
 import { localizeKnownError } from '../i18n/errors'
 import { habitSettled, habitSteps } from '../lib/habitSteps'
 
 interface Props {
   result: DecideResponse | null
+  /** A "Help me choose" plan: the reminder re-runs the plan with the same asset types. */
+  plan?: PlanResponse | null
+  tipos?: string[]
 }
 
-export default function RemindPanel({ result }: Props) {
+export default function RemindPanel({ result, plan = null, tipos = [] }: Props) {
   const { t, dateLabel } = useI18n()
   const [phone, setPhone] = useState('')
   const [consent, setConsent] = useState(false)
@@ -37,14 +40,15 @@ export default function RemindPanel({ result }: Props) {
       request.current?.abort()
       stopPolling()
     }
-  }, [result])
+  }, [result, plan])
 
-  if (!result) return null
-  const days = result.numeros.plazo_dias
+  const numbers = result?.numeros ?? plan?.numeros
+  if (!numbers) return null
+  const days = numbers.plazo_dias
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!result || pending) return
+    if (!numbers || pending) return
     const current = new AbortController()
     request.current?.abort()
     request.current = current
@@ -52,9 +56,10 @@ export default function RemindPanel({ result }: Props) {
     setPending(true)
     setError(null)
     try {
+      const target = result ? { simbolo: result.simbolo } : { tipos }
       const saved = await api.remind({
-        telefono: phone.trim(), consentimiento: consent, simbolo: result.simbolo,
-        monto: result.numeros.monto, plazo_dias: days, perfil: result.numeros.perfil,
+        telefono: phone.trim(), consentimiento: consent, ...target,
+        monto: numbers.monto, plazo_dias: days, perfil: numbers.perfil,
       }, current.signal)
       if (current.signal.aborted) return
       setPlanned(saved.vence)

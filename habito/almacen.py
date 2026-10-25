@@ -31,8 +31,9 @@ CREATE TABLE IF NOT EXISTS recordatorios (
 """
 
 # Columnas que llegaron después; conectar() las agrega a una base ya creada.
-# Guardan el SID de Twilio y el último estado que Twilio reportó (delivered, busy, completed...).
-NUEVAS = ("mensaje_sid", "mensaje_estado", "llamada_sid", "llamada_estado")
+# Guardan el SID de Twilio y el último estado que Twilio reportó (delivered, busy, completed...),
+# y los tipos de activo cuando el recordatorio es de un plan de "Help me choose" (separados por coma).
+NUEVAS = ("mensaje_sid", "mensaje_estado", "llamada_sid", "llamada_estado", "tipos")
 
 # Estados de Twilio que ya no cambian: no hace falta volver a preguntar.
 FINALES_MENSAJE = ("delivered", "read", "failed", "undelivered")
@@ -62,14 +63,14 @@ def conectar(archivo: Path | None = None) -> sqlite3.Connection:
 
 
 def crear(conn, telefono: str, simbolo: str, nombre: str, monto: float, plazo_dias: int, perfil: str,
-          decision: str, sugerido: float, cuando: datetime | None = None) -> dict:
+          decision: str, sugerido: float, cuando: datetime | None = None, tipos: list[str] | None = None) -> dict:
     cuando = cuando or ahora()
     nuevo = secrets.token_urlsafe(16)
     conn.execute(
         "INSERT INTO recordatorios (token, creado, vence, telefono, simbolo, nombre, monto, plazo_dias, perfil, "
-        "decision, sugerido) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "decision, sugerido, tipos) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (nuevo, _iso(cuando), _iso(cuando + timedelta(days=plazo_dias)), telefono, simbolo, nombre, monto,
-         plazo_dias, perfil, decision, sugerido))
+         plazo_dias, perfil, decision, sugerido, ",".join(tipos) if tipos else None))
     conn.commit()
     return obtener(conn, nuevo)
 
