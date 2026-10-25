@@ -1,7 +1,7 @@
-"""Plan de un universo elegido por la persona; no modifica el plan automático.
+"""Plan over the assets the person picked; the automatic plan is unchanged.
 
-El modelo, la selección por correlación y el riesgo siguen en decision.plan.
-Las dependencias del servidor se inyectan para evitar ciclos de importación.
+The model, the correlation filter and the risk control stay in decision.plan.
+Server dependencies are passed in to avoid import cycles.
 """
 
 from __future__ import annotations
